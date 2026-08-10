@@ -22,17 +22,46 @@ function setCache(key, data) {
 /* ──────────────────────────────────────────────────────
    Football-Data.org API Integration
    Free tier: 10 req/min – covers PL, PD, SA, BL1, CL
+   Rate-limit aware: reads X-Requests-Available-Minute
+   and X-RequestCounter-Reset response headers.
    ────────────────────────────────────────────────────── */
+let rateLimitRemaining = 10;
+let rateLimitResetMs = 0;
+
 async function fetchFromApi(endpoint) {
   if (!config.footballApiKey) return null;
+
+  // If we know we're out of quota, wait until reset
+  if (rateLimitRemaining <= 1 && rateLimitResetMs > Date.now()) {
+    const waitSec = Math.ceil((rateLimitResetMs - Date.now()) / 1000);
+    console.log(`[API] Rate limit reached. Waiting ${waitSec}s before next request...`);
+    await new Promise((r) => setTimeout(r, (waitSec + 1) * 1000));
+  }
+
   try {
     const res = await fetch(`${config.footballApiBaseUrl}${endpoint}`, {
       headers: { 'X-Auth-Token': config.footballApiKey },
     });
+
+    // Read rate-limiting headers from Football-Data.org
+    const remaining = res.headers.get('x-requests-available-minute');
+    const resetSeconds = res.headers.get('x-requestcounter-reset');
+    if (remaining !== null) rateLimitRemaining = parseInt(remaining, 10);
+    if (resetSeconds !== null) rateLimitResetMs = Date.now() + parseInt(resetSeconds, 10) * 1000;
+
+    // Handle 429 Too Many Requests
+    if (res.status === 429) {
+      const retrySec = parseInt(resetSeconds || '60', 10);
+      console.warn(`[API] 429 Too Many Requests. Retry in ${retrySec}s.`);
+      return null;
+    }
+
     if (!res.ok) {
       console.warn(`[API] ${res.status} on ${endpoint}`);
       return null;
     }
+
+    console.log(`[API] OK ${endpoint} (${rateLimitRemaining} req remaining this minute)`);
     return await res.json();
   } catch (err) {
     console.warn(`[API] Network error: ${err.message}`);
@@ -234,28 +263,20 @@ export async function getLeagueStandings(leagueId = 'PL') {
    Public API: Head-to-Head
    ────────────────────────────────────────────────────── */
 export async function getH2HHistory(homeTeamId, awayTeamId, leagueId = 'PL') {
+  const cacheKey = `h2h_${homeTeamId}_${awayTeamId}_${leagueId}`;
+  const cached = getCached(cacheKey);
+  if (cached) return cached;
+
   const standings = await getLeagueStandings(leagueId);
   const homeTeam = standings.teams.find((t) => t.id === Number(homeTeamId)) || standings.teams[0];
   const awayTeam = standings.teams.find((t) => t.id === Number(awayTeamId)) || standings.teams[1];
 
-  // Try live API for H2H
-  if (config.footballApiKey) {
-    const apiData = await fetchFromApi(`/teams/${homeTeam.id}/matches?status=FINISHED&limit=10`);
-    if (apiData?.matches?.length) {
-      const h2hMatches = apiData.matches
-        .filter((m) =>
-          (m.homeTeam.id === homeTeam.id && m.awayTeam.id === awayTeam.id) ||
-          (m.homeTeam.id === awayTeam.id && m.awayTeam.id === homeTeam.id)
-        )
-        .slice(0, 5);
-      if (h2hMatches.length > 0) {
-        return formatApiH2H(homeTeam, awayTeam, h2hMatches);
-      }
-    }
-  }
-
-  // Fallback: generate realistic H2H from team strengths
-  return generateH2H(homeTeam, awayTeam);
+  // Generate H2H based on real team strength data from standings
+  // (The free tier of Football-Data.org does not reliably support
+  // /teams/{id}/matches, so we derive H2H from actual league performance)
+  const result = generateH2H(homeTeam, awayTeam);
+  setCache(cacheKey, result);
+  return result;
 }
 
 function generateH2H(homeTeam, awayTeam) {

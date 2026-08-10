@@ -1,7 +1,13 @@
 import express from 'express';
 import cors from 'cors';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import fs from 'fs';
 import { config } from './config.js';
 import { getLeagueStandings, getH2HHistory, getMatchPredictionDetails } from './services/sportsApi.js';
+
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
 
 const app = express();
 
@@ -56,6 +62,17 @@ app.get('/api/predict/:homeId/:awayId', async (req, res) => {
     res.status(500).json({ success: false, error: err.message });
   }
 });
+
+// ─────────────────────────────────────────────────────────
+// Serve Frontend in Production
+// ─────────────────────────────────────────────────────────
+const distPath = path.join(__dirname, '../dist');
+if (fs.existsSync(distPath)) {
+  app.use(express.static(distPath));
+  app.get('*', (req, res) => {
+    res.sendFile(path.join(distPath, 'index.html'));
+  });
+}
 
 app.listen(config.port, () => {
   console.log(`=======================================================`);
