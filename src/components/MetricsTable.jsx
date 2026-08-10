@@ -6,32 +6,42 @@ export default function MetricsTable({ standings, homeTeamId, awayTeamId, onSele
   return (
     <div className="glass-card animate-fade-in" style={{ padding: '20px' }}>
       
-      {/* Header & Quick Selector info */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '12px' }}>
         <div>
-          <h2 style={{ fontSize: '18px', fontWeight: 700, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <span>🏆</span> Tabla de Posiciones & Rendimiento ({standings.league?.name})
+          <h2 style={{ fontSize: '18px', fontWeight: 700, color: 'var(--text-primary)' }}>
+            Tabla de Posiciones — {standings.league?.name}
           </h2>
           <p style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
-            Haz clic en los botones para seleccionar los equipos del enfrentamiento a analizar.
+            {standings.teams.length} equipos | Temporada {standings.league?.season} | Selecciona los equipos del enfrentamiento a analizar
           </p>
         </div>
+        {standings.dataSource && (
+          <span style={{
+            fontSize: '10px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em',
+            padding: '4px 10px', borderRadius: '8px',
+            background: standings.dataSource === 'live' ? 'rgba(0,230,118,0.1)' : 'rgba(255,170,0,0.08)',
+            color: standings.dataSource === 'live' ? 'var(--accent-green)' : 'var(--accent-gold)',
+            border: `1px solid ${standings.dataSource === 'live' ? 'rgba(0,230,118,0.3)' : 'rgba(255,170,0,0.2)'}`,
+          }}>
+            {standings.dataSource === 'live' ? 'En Vivo' : 'Simulado'}
+          </span>
+        )}
       </div>
 
-      {/* Table Container */}
       <div style={{ overflowX: 'auto' }}>
         <table style={{ width: '100%', borderCollapse: 'collapse', textAlign: 'left', fontSize: '13px' }}>
           <thead>
             <tr style={{ borderBottom: '1px solid var(--glass-border)', color: 'var(--text-muted)', fontSize: '11px', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-              <th style={{ padding: '10px 8px', width: '36px' }}>Pos</th>
+              <th style={{ padding: '10px 8px', width: '36px' }}>#</th>
               <th style={{ padding: '10px 8px' }}>Equipo</th>
               <th style={{ padding: '10px 8px', textAlign: 'center' }}>PJ</th>
               <th style={{ padding: '10px 8px', textAlign: 'center' }}>G/E/P</th>
-              <th style={{ padding: '10px 8px', textAlign: 'center' }}>Goles</th>
-              <th style={{ padding: '10px 8px', textAlign: 'center' }}>xG Avg</th>
+              <th style={{ padding: '10px 8px', textAlign: 'center' }}>GF:GC</th>
+              <th style={{ padding: '10px 8px', textAlign: 'center' }}>DG</th>
+              <th style={{ padding: '10px 8px', textAlign: 'center' }}>xG</th>
               <th style={{ padding: '10px 8px' }}>Racha</th>
               <th style={{ padding: '10px 8px', textAlign: 'center' }}>Pts</th>
-              <th style={{ padding: '10px 8px', textAlign: 'right' }}>Selección Partido</th>
+              <th style={{ padding: '10px 8px', textAlign: 'right' }}>Analizar</th>
             </tr>
           </thead>
           <tbody>
@@ -45,43 +55,47 @@ export default function MetricsTable({ standings, homeTeamId, awayTeamId, onSele
                   style={{
                     borderBottom: '1px solid rgba(255, 255, 255, 0.04)',
                     background: isHome ? 'rgba(0, 242, 254, 0.08)' : isAway ? 'rgba(255, 61, 113, 0.08)' : 'transparent',
-                    transition: 'var(--transition-fast)'
+                    transition: 'var(--transition-fast)',
                   }}
                 >
-                  <td style={{ padding: '12px 8px', fontWeight: 700, color: team.position <= 4 ? 'var(--accent-cyan)' : 'var(--text-muted)' }}>
+                  <td style={{ padding: '10px 8px', fontWeight: 700, color: team.position <= 4 ? 'var(--accent-cyan)' : 'var(--text-muted)', fontSize: '12px' }}>
                     {team.position}
                   </td>
                   
-                  <td style={{ padding: '12px 8px', fontWeight: 600 }}>
-                    <span style={{ marginRight: '8px', fontSize: '16px' }}>{team.logo}</span>
-                    {team.name}
+                  <td style={{ padding: '10px 8px', fontWeight: 600, fontSize: '13px' }}>
+                    {team.crest && <img src={team.crest} alt="" style={{ width: '18px', height: '18px', marginRight: '8px', verticalAlign: 'middle', borderRadius: '2px' }} />}
+                    <span style={{ verticalAlign: 'middle' }}>{team.name}</span>
                   </td>
 
-                  <td style={{ padding: '12px 8px', textAlign: 'center', color: 'var(--text-secondary)' }}>{team.played}</td>
+                  <td style={{ padding: '10px 8px', textAlign: 'center', color: 'var(--text-secondary)' }}>{team.played}</td>
                   
-                  <td style={{ padding: '12px 8px', textAlign: 'center', color: 'var(--text-secondary)' }}>
+                  <td style={{ padding: '10px 8px', textAlign: 'center', color: 'var(--text-secondary)' }}>
                     {team.won}/{team.drawn}/{team.lost}
                   </td>
 
-                  <td style={{ padding: '12px 8px', textAlign: 'center' }}>
+                  <td style={{ padding: '10px 8px', textAlign: 'center' }}>
                     <span style={{ color: 'var(--accent-green)' }}>{team.goalsFor}</span>:<span style={{ color: 'var(--accent-red)' }}>{team.goalsAgainst}</span>
                   </td>
 
-                  <td style={{ padding: '12px 8px', textAlign: 'center', fontWeight: 600, color: 'var(--accent-purple)' }}>
-                    {team.xG || '1.85'}
+                  <td style={{ padding: '10px 8px', textAlign: 'center', fontWeight: 600, color: (team.goalDifference || team.goalsFor - team.goalsAgainst) >= 0 ? 'var(--accent-green)' : 'var(--accent-red)' }}>
+                    {(team.goalDifference || team.goalsFor - team.goalsAgainst) > 0 ? '+' : ''}{team.goalDifference || team.goalsFor - team.goalsAgainst}
                   </td>
 
-                  <td style={{ padding: '12px 8px', whiteSpace: 'nowrap' }}>
-                    {team.form?.map((f, i) => (
+                  <td style={{ padding: '10px 8px', textAlign: 'center', fontWeight: 600, color: 'var(--accent-purple)' }}>
+                    {team.xG || '—'}
+                  </td>
+
+                  <td style={{ padding: '10px 8px', whiteSpace: 'nowrap' }}>
+                    {team.form?.slice(0, 5).map((f, i) => (
                       <span key={i} className={`badge-form ${f.toLowerCase()}`}>{f}</span>
                     ))}
                   </td>
 
-                  <td style={{ padding: '12px 8px', textAlign: 'center', fontWeight: 800, fontSize: '14px', color: 'var(--accent-cyan)' }}>
+                  <td style={{ padding: '10px 8px', textAlign: 'center', fontWeight: 800, fontSize: '14px', color: 'var(--accent-cyan)' }}>
                     {team.points}
                   </td>
 
-                  <td style={{ padding: '12px 8px', textAlign: 'right', whiteSpace: 'nowrap' }}>
+                  <td style={{ padding: '10px 8px', textAlign: 'right', whiteSpace: 'nowrap' }}>
                     <button
                       onClick={() => onSelectHomeTeam(team.id)}
                       style={{
@@ -95,7 +109,7 @@ export default function MetricsTable({ standings, homeTeamId, awayTeamId, onSele
                         border: '1px solid rgba(0, 242, 254, 0.3)',
                       }}
                     >
-                      {isHome ? '🏠 Local' : 'Local'}
+                      {isHome ? 'Local >' : 'Local'}
                     </button>
 
                     <button
@@ -110,7 +124,7 @@ export default function MetricsTable({ standings, homeTeamId, awayTeamId, onSele
                         border: '1px solid rgba(255, 61, 113, 0.3)',
                       }}
                     >
-                      {isAway ? '✈️ Visitante' : 'Visitante'}
+                      {isAway ? 'Visit. >' : 'Visit.'}
                     </button>
                   </td>
                 </tr>
@@ -119,7 +133,6 @@ export default function MetricsTable({ standings, homeTeamId, awayTeamId, onSele
           </tbody>
         </table>
       </div>
-
     </div>
   );
 }

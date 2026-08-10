@@ -59,8 +59,9 @@ app.get('/api/predict/:homeId/:awayId', async (req, res) => {
 
 app.listen(config.port, () => {
   console.log(`=======================================================`);
-  console.log(` ⚽ FutbolAnalytics API Server running on port ${config.port}`);
-  console.log(` 🚀 Environment: ${config.env}`);
-  console.log(` 📊 Endpoint: http://localhost:${config.port}/api/health`);
+  console.log(` FutbolAnalytics API Server running on port ${config.port}`);
+  console.log(` Environment: ${config.env}`);
+  console.log(` API Key: ${config.footballApiKey ? 'Configured (live data)' : 'Not set (simulated data)'}`);
+  console.log(` Health: http://localhost:${config.port}/api/health`);
   console.log(`=======================================================`);
 });

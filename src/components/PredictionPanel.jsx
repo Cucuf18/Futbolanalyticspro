@@ -9,18 +9,17 @@ export default function PredictionPanel({ predictionData, isPremium, onOpenPremi
   return (
     <div className="glass-card animate-fade-in" style={{ padding: '24px', position: 'relative', overflow: 'hidden' }}>
       
-      {/* Panel Header */}
+      {/* Header */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '20px', flexWrap: 'wrap', gap: '10px' }}>
         <div>
-          <h2 style={{ fontSize: '18px', fontWeight: 800, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '8px' }}>
-            <span>🤖</span> Modelado Predictivo & Algoritmo IA (Poisson + Dixon-Coles)
+          <h2 style={{ fontSize: '18px', fontWeight: 800, color: 'var(--text-primary)' }}>
+            Modelado Predictivo (Poisson + Dixon-Coles)
           </h2>
           <p style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
-            Simulación estadística para {matchInfo.homeTeam.name} vs {matchInfo.awayTeam.name}
+            {matchInfo.homeTeam.name} vs {matchInfo.awayTeam.name}
           </p>
         </div>
 
-        {/* Premium Badge */}
         <div style={{
           padding: '4px 12px',
           borderRadius: '12px',
@@ -29,28 +28,29 @@ export default function PredictionPanel({ predictionData, isPremium, onOpenPremi
           background: isPremium ? 'linear-gradient(135deg, #ffe066 0%, #ffaa00 100%)' : 'rgba(255, 255, 255, 0.08)',
           color: isPremium ? '#000' : 'var(--text-muted)',
           border: '1px solid rgba(255,255,255,0.1)',
+          textTransform: 'uppercase',
+          letterSpacing: '0.04em',
         }}>
-          {isPremium ? '⭐ ACCESO PREMIUM ACTIVO' : '🔒 CONTENIDO RESTRINGIDO'}
+          {isPremium ? 'Acceso Premium' : 'Contenido Restringido'}
         </div>
       </div>
 
-      {/* Main Content (Blurred if not premium) */}
+      {/* Prediction Content (blurred for free users) */}
       <div style={{
         filter: isPremium ? 'none' : 'blur(7px)',
         pointerEvents: isPremium ? 'auto' : 'none',
         userSelect: isPremium ? 'auto' : 'none',
         opacity: isPremium ? 1 : 0.45,
-        transition: 'var(--transition-smooth)'
+        transition: 'var(--transition-smooth)',
       }}>
 
-        {/* Win / Draw / Loss Probabilities */}
+        {/* Win Probabilities */}
         <div style={{ marginBottom: '24px' }}>
           <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '10px' }}>
-            Probabilidades de Resultado Final
+            Probabilidades de Resultado
           </div>
           
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px', textAlign: 'center', marginBottom: '12px' }}>
-            
             <div style={{ background: 'rgba(0, 242, 254, 0.08)', padding: '12px', borderRadius: '12px', border: '1px solid rgba(0, 242, 254, 0.2)' }}>
               <div style={{ fontSize: '12px', color: 'var(--accent-cyan)', fontWeight: 600 }}>{matchInfo.homeTeam.shortName}</div>
               <div style={{ fontSize: '28px', fontWeight: 800, color: 'var(--accent-cyan)' }}>{probabilities.homeWin}%</div>
@@ -68,54 +68,49 @@ export default function PredictionPanel({ predictionData, isPremium, onOpenPremi
               <div style={{ fontSize: '28px', fontWeight: 800, color: 'var(--accent-red)' }}>{probabilities.awayWin}%</div>
               <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Victoria Visitante</div>
             </div>
-
           </div>
         </div>
 
-        {/* Expected Goals (xG) & Detailed Odds Grid */}
-        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))', gap: '16px', marginBottom: '24px' }}>
+        {/* Detailed Metrics Grid */}
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '14px', marginBottom: '24px' }}>
           
-          {/* xG Card */}
-          <div style={{ background: 'rgba(15, 22, 41, 0.7)', padding: '16px', borderRadius: '14px', border: '1px solid var(--glass-border)' }}>
-            <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '4px' }}>Goles Esperados (xG)</div>
+          <div style={{ background: 'rgba(15, 22, 41, 0.7)', padding: '14px', borderRadius: '14px', border: '1px solid var(--glass-border)' }}>
+            <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Goles Esperados (xG)</div>
             <div style={{ fontSize: '20px', fontWeight: 800, color: 'var(--accent-purple)' }}>
-              {expectedGoals.home} - {expectedGoals.away}
+              {expectedGoals.home} – {expectedGoals.away}
             </div>
             <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '4px' }}>
-              Total Combinado: {expectedGoals.total} goles
+              Total: {expectedGoals.total} goles
             </div>
           </div>
 
-          {/* Over 2.5 Goals */}
-          <div style={{ background: 'rgba(15, 22, 41, 0.7)', padding: '16px', borderRadius: '14px', border: '1px solid var(--glass-border)' }}>
-            <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '4px' }}>Línea +2.5 Goles</div>
+          <div style={{ background: 'rgba(15, 22, 41, 0.7)', padding: '14px', borderRadius: '14px', border: '1px solid var(--glass-border)' }}>
+            <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Linea +2.5 Goles</div>
             <div style={{ fontSize: '20px', fontWeight: 800, color: 'var(--accent-green)' }}>
-              {probabilitiesSecondary.over25}% <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Prob.</span>
+              {probabilitiesSecondary.over25}%
             </div>
             <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '4px' }}>
-              BTTS (Ambos Anotan): {probabilitiesSecondary.btts}%
+              BTTS: {probabilitiesSecondary.btts}%
             </div>
           </div>
 
-          {/* Most Likely Score */}
-          <div style={{ background: 'rgba(15, 22, 41, 0.7)', padding: '16px', borderRadius: '14px', border: '1px solid var(--glass-border)' }}>
-            <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '4px' }}>Marcador Más Probable</div>
+          <div style={{ background: 'rgba(15, 22, 41, 0.7)', padding: '14px', borderRadius: '14px', border: '1px solid var(--glass-border)' }}>
+            <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Marcador Probable</div>
             <div style={{ fontSize: '20px', fontWeight: 800, color: 'var(--accent-gold)' }}>
               {mostLikelyScore}
             </div>
             <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '4px' }}>
-              Índice de Confianza: {confidenceScore}%
+              Confianza: {confidenceScore}%
             </div>
           </div>
-
         </div>
 
-        {/* Value Bet Signal Box */}
+        {/* Value Bet Signal */}
         <div style={{
-          background: 'linear-gradient(135deg, rgba(0, 242, 254, 0.15) 0%, rgba(157, 78, 221, 0.15) 100%)',
-          border: '1px solid rgba(0, 242, 254, 0.3)',
-          borderRadius: '16px',
-          padding: '16px',
+          background: 'linear-gradient(135deg, rgba(0, 242, 254, 0.12) 0%, rgba(157, 78, 221, 0.12) 100%)',
+          border: '1px solid rgba(0, 242, 254, 0.25)',
+          borderRadius: '14px',
+          padding: '14px 16px',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
@@ -123,33 +118,28 @@ export default function PredictionPanel({ predictionData, isPremium, onOpenPremi
           gap: '12px',
         }}>
           <div>
-            <div style={{ fontSize: '11px', color: 'var(--accent-cyan)', fontWeight: 700, textTransform: 'uppercase' }}>
-              🎯 Señal de Apuesta de Valor (Value Bet AI)
+            <div style={{ fontSize: '10px', color: 'var(--accent-cyan)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+              Senal Value Bet
             </div>
-            <div style={{ fontSize: '15px', fontWeight: 700, marginTop: '2px' }}>
+            <div style={{ fontSize: '14px', fontWeight: 700, marginTop: '2px' }}>
               {recommendation}
             </div>
           </div>
-
           <div style={{ textAlign: 'right' }}>
-            <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Cuota Recomendada</div>
+            <div style={{ fontSize: '10px', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Cuota Min.</div>
             <div style={{ fontSize: '22px', fontWeight: 800, color: 'var(--accent-green)' }}>
               @{recommendedOdds}
             </div>
           </div>
         </div>
-
       </div>
 
-      {/* Paywall Overlay Gating for Standard Users */}
+      {/* Paywall Overlay */}
       {!isPremium && (
         <div style={{
           position: 'absolute',
-          top: 0,
-          left: 0,
-          right: 0,
-          bottom: 0,
-          background: 'rgba(8, 12, 22, 0.75)',
+          top: 0, left: 0, right: 0, bottom: 0,
+          background: 'rgba(8, 12, 22, 0.78)',
           backdropFilter: 'blur(8px)',
           display: 'flex',
           flexDirection: 'column',
@@ -160,17 +150,20 @@ export default function PredictionPanel({ predictionData, isPremium, onOpenPremi
           zIndex: 10,
         }}>
           <div style={{
-            fontSize: '42px',
-            marginBottom: '8px',
-            filter: 'drop-shadow(0 0 10px rgba(255, 170, 0, 0.5))'
+            width: '48px', height: '48px', borderRadius: '50%',
+            background: 'rgba(255, 170, 0, 0.15)',
+            border: '2px solid rgba(255, 170, 0, 0.4)',
+            display: 'flex', alignItems: 'center', justifyContent: 'center',
+            fontSize: '18px', fontWeight: 800, color: 'var(--accent-gold)',
+            marginBottom: '12px',
           }}>
-            🔒
+            P
           </div>
-          <h3 style={{ fontSize: '22px', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '8px' }}>
-            Modelado Predictivo Restringido
+          <h3 style={{ fontSize: '20px', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '6px' }}>
+            Predicciones Restringidas
           </h3>
-          <p style={{ fontSize: '14px', color: 'var(--text-secondary)', maxWidth: '440px', marginBottom: '20px' }}>
-            El cálculo de probabilidades por Poisson, simulaciones xG y señales de cuotas de valor están reservados para suscriptores <strong className="gradient-gold">Pro & Premium</strong>.
+          <p style={{ fontSize: '13px', color: 'var(--text-secondary)', maxWidth: '400px', marginBottom: '20px', lineHeight: 1.6 }}>
+            Las probabilidades Poisson, simulaciones xG y senales de cuotas estan reservadas para suscriptores <strong className="gradient-gold">Premium</strong>.
           </p>
           <button
             onClick={onOpenPremiumModal}
@@ -184,11 +177,10 @@ export default function PredictionPanel({ predictionData, isPremium, onOpenPremi
               boxShadow: '0 6px 20px rgba(255, 170, 0, 0.4)',
             }}
           >
-            ⭐ Desbloquear Pronósticos IA Ahora
+            Desbloquear Predicciones
           </button>
         </div>
       )}
-
     </div>
   );
 }

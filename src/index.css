@@ -124,6 +124,10 @@ button {
   50% { opacity: 1; filter: drop-shadow(0 0 16px rgba(0, 242, 254, 0.8)); }
 }
 
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
 .pulse-glow {
   animation: pulseGlow 3s infinite;
 }

@@ -3,7 +3,7 @@ import React from 'react';
 export default function LeagueSelector({ leagues, selectedLeague, onSelectLeague }) {
   return (
     <div style={{ display: 'flex', alignItems: 'center', gap: '10px', overflowX: 'auto', paddingBottom: '6px', scrollbarWidth: 'none' }}>
-      <span style={{ fontSize: '13px', color: 'var(--text-muted)', fontWeight: 600, whiteSpace: 'nowrap' }}>Competencia:</span>
+      <span style={{ fontSize: '13px', color: 'var(--text-muted)', fontWeight: 600, whiteSpace: 'nowrap' }}>Liga:</span>
       {leagues.map((league) => {
         const isSelected = selectedLeague === league.id;
         return (
@@ -25,7 +25,7 @@ export default function LeagueSelector({ leagues, selectedLeague, onSelectLeague
               gap: '6px',
             }}
           >
-            <span>{league.country}</span>
+            <span style={{ fontSize: '10px', fontWeight: 700, opacity: 0.6, textTransform: 'uppercase', letterSpacing: '0.04em' }}>{league.code}</span>
             <span>{league.name}</span>
           </button>
         );

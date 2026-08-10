@@ -7,10 +7,10 @@ export const config = {
   footballApiKey: process.env.FOOTBALL_API_KEY || '',
   footballApiBaseUrl: process.env.FOOTBALL_API_BASE_URL || 'https://api.football-data.org/v4',
   supportedLeagues: [
-    { id: 'PL', name: 'Premier League', country: '🏴󠁧󠁢󠁥󠁮󠁧󠁿 Inglaterra', code: 'EPL' },
-    { id: 'PD', name: 'La Liga', country: '🇪🇸 España', code: 'ESP' },
-    { id: 'SA', name: 'Serie A', country: '🇮🇹 Italia', code: 'ITA' },
-    { id: 'BL1', name: 'Bundesliga', country: '🇩🇪 Alemania', code: 'GER' },
-    { id: 'CL', name: 'Champions League', country: '🇪🇺 Europa', code: 'UCL' },
+    { id: 'PL', name: 'Premier League', country: 'Inglaterra', code: 'ENG' },
+    { id: 'PD', name: 'La Liga', country: 'España', code: 'ESP' },
+    { id: 'SA', name: 'Serie A', country: 'Italia', code: 'ITA' },
+    { id: 'BL1', name: 'Bundesliga', country: 'Alemania', code: 'GER' },
+    { id: 'CL', name: 'Champions League', country: 'Europa', code: 'UCL' },
   ],
 };
