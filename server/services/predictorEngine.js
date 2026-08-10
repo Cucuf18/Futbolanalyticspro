@@ -132,8 +132,61 @@ export function calculateMatchPrediction(homeStats, awayStats, h2hHistory = []) 
     recommendedOdds = (100 / pctBTTS).toFixed(2);
   }
 
+// Generate random number from Poisson distribution (Knuth algorithm)
+function generatePoissonRandom(lambda) {
+  const L = Math.exp(-lambda);
+  let p = 1.0;
+  let k = 0;
+  do {
+    k++;
+    p *= Math.random();
+  } while (p > L);
+  return k - 1;
+}
+
+function runMonteCarloSimulation(xG_Home, xG_Away, iterations = 100) {
+  let homeWins = 0;
+  let draws = 0;
+  let awayWins = 0;
+  const scoreFrequencies = {};
+
+  for (let i = 0; i < iterations; i++) {
+    const hGoals = generatePoissonRandom(xG_Home);
+    const aGoals = generatePoissonRandom(xG_Away);
+
+    if (hGoals > aGoals) homeWins++;
+    else if (hGoals === aGoals) draws++;
+    else awayWins++;
+
+    const scoreStr = `${hGoals}-${aGoals}`;
+    scoreFrequencies[scoreStr] = (scoreFrequencies[scoreStr] || 0) + 1;
+  }
+
+  // Find top 3 most common scores
+  const topScores = Object.entries(scoreFrequencies)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 3)
+    .map(([score, count]) => ({ score, count, percentage: Math.round((count / iterations) * 100) }));
+
+  return {
+    iterations,
+    results: {
+      homeWins,
+      draws,
+      awayWins,
+      homeWinPct: Math.round((homeWins / iterations) * 100),
+      drawPct: Math.round((draws / iterations) * 100),
+      awayWinPct: Math.round((awayWins / iterations) * 100)
+    },
+    topScores
+  };
+}
+
   // Confidence index (60-95%)
   const confidenceScore = Math.min(95, Math.max(62, Math.round(50 + Math.abs(pctHomeWin - pctAwayWin) * 0.5 + (h2hHistory.length * 3))));
+
+  // Run 100 simulations
+  const monteCarlo = runMonteCarloSimulation(xG_Home, xG_Away, 100);
 
   return {
     probabilities: {
@@ -157,6 +210,7 @@ export function calculateMatchPrediction(homeStats, awayStats, h2hHistory = []) 
     recommendation,
     valueBetType,
     recommendedOdds,
+    monteCarlo,
     calculatedAt: new Date().toISOString(),
   };
 }

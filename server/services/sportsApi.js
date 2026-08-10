@@ -259,6 +259,9 @@ export async function getLeagueStandings(leagueId = 'PL') {
   return fallback;
 }
 
+// Store in-flight promises to prevent duplicate concurrent API calls
+const inFlightRequests = new Map();
+
 /* ──────────────────────────────────────────────────────
    Public API: Head-to-Head
    ────────────────────────────────────────────────────── */
@@ -271,12 +274,53 @@ export async function getH2HHistory(homeTeamId, awayTeamId, leagueId = 'PL') {
   const homeTeam = standings.teams.find((t) => t.id === Number(homeTeamId)) || standings.teams[0];
   const awayTeam = standings.teams.find((t) => t.id === Number(awayTeamId)) || standings.teams[1];
 
-  // Generate H2H based on real team strength data from standings
-  // (The free tier of Football-Data.org does not reliably support
-  // /teams/{id}/matches, so we derive H2H from actual league performance)
-  const result = generateH2H(homeTeam, awayTeam);
-  setCache(cacheKey, result);
-  return result;
+  let h2hResult = null;
+
+  // Try fetching REAL matches if API key is present
+  if (config.footballApiKey) {
+    try {
+      const matchCacheKey = `team_matches_${homeTeam.id}`;
+      let apiData = getCached(matchCacheKey);
+      
+      if (!apiData) {
+        if (inFlightRequests.has(matchCacheKey)) {
+           apiData = await inFlightRequests.get(matchCacheKey);
+        } else {
+           const today = new Date();
+           const dateTo = today.toISOString().split('T')[0];
+           const dateFrom = new Date(today.getTime() - 720 * 86400000).toISOString().split('T')[0];
+           
+           const reqPromise = fetchFromApi(`/teams/${homeTeam.id}/matches?status=FINISHED&dateFrom=${dateFrom}&dateTo=${dateTo}&limit=100`);
+           inFlightRequests.set(matchCacheKey, reqPromise);
+           apiData = await reqPromise;
+           inFlightRequests.delete(matchCacheKey);
+           if (apiData) setCache(matchCacheKey, apiData, 86400); // cache for 24h
+        }
+      }
+
+      if (apiData?.matches?.length) {
+        const h2hMatches = apiData.matches
+          .filter((m) =>
+            (m.homeTeam.id === homeTeam.id && m.awayTeam.id === awayTeam.id) ||
+            (m.homeTeam.id === awayTeam.id && m.awayTeam.id === homeTeam.id)
+          )
+          .slice(0, 5);
+        if (h2hMatches.length > 0) {
+          h2hResult = formatApiH2H(homeTeam, awayTeam, h2hMatches);
+        }
+      }
+    } catch (e) {
+      console.warn(`[API] Failed to fetch real H2H, falling back to generated:`, e.message);
+    }
+  }
+
+  // Fallback if no real H2H found or API rate limited
+  if (!h2hResult) {
+    h2hResult = generateH2H(homeTeam, awayTeam);
+  }
+
+  setCache(cacheKey, h2hResult);
+  return h2hResult;
 }
 
 function generateH2H(homeTeam, awayTeam) {
@@ -305,9 +349,9 @@ function generateH2H(homeTeam, awayTeam) {
     summary: {
       totalMatches: matches.length,
       homeWins, draws, awayWins,
-      homeWinPct: Math.round((homeWins / matches.length) * 100),
-      drawPct: Math.round((draws / matches.length) * 100),
-      awayWinPct: Math.round((awayWins / matches.length) * 100),
+      homeWinPct: matches.length > 0 ? Math.round((homeWins / matches.length) * 100) : 0,
+      drawPct: matches.length > 0 ? Math.round((draws / matches.length) * 100) : 0,
+      awayWinPct: matches.length > 0 ? Math.round((awayWins / matches.length) * 100) : 0,
     },
     matches,
   };
@@ -333,9 +377,9 @@ function formatApiH2H(homeTeam, awayTeam, apiMatches) {
     summary: {
       totalMatches: matches.length,
       homeWins, draws, awayWins,
-      homeWinPct: Math.round((homeWins / matches.length) * 100),
-      drawPct: Math.round((draws / matches.length) * 100),
-      awayWinPct: Math.round((awayWins / matches.length) * 100),
+      homeWinPct: matches.length > 0 ? Math.round((homeWins / matches.length) * 100) : 0,
+      drawPct: matches.length > 0 ? Math.round((draws / matches.length) * 100) : 0,
+      awayWinPct: matches.length > 0 ? Math.round((awayWins / matches.length) * 100) : 0,
     },
     matches,
   };

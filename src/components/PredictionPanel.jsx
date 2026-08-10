@@ -132,6 +132,64 @@ export default function PredictionPanel({ predictionData, isPremium, onOpenPremi
             </div>
           </div>
         </div>
+
+        {/* Monte Carlo Simulation (100 iterations) */}
+        {prediction.monteCarlo && (
+          <div style={{ marginTop: '28px' }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '8px' }}>
+              <div>
+                <h3 style={{ fontSize: '15px', fontWeight: 800, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '8px' }}>
+                  <span style={{ color: 'var(--accent-gold)' }}>⚡</span> Simulador Monte Carlo
+                </h3>
+                <div style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>Resultados de 100 partidos virtuales basados en xG</div>
+              </div>
+              <div style={{ fontSize: '11px', fontWeight: 700, background: 'rgba(255, 170, 0, 0.1)', color: 'var(--accent-gold)', padding: '4px 10px', borderRadius: '8px', border: '1px solid rgba(255,170,0,0.2)' }}>
+                100 ITERACIONES
+              </div>
+            </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px' }}>
+              {/* Simulation Results Bar */}
+              <div style={{ background: 'rgba(15, 22, 41, 0.7)', padding: '16px', borderRadius: '14px', border: '1px solid var(--glass-border)' }}>
+                <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginBottom: '12px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Distribución de Resultados</div>
+                
+                <div style={{ display: 'flex', height: '24px', borderRadius: '12px', overflow: 'hidden', marginBottom: '12px', boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.2)' }}>
+                  <div style={{ width: `${prediction.monteCarlo.results.homeWinPct}%`, background: 'var(--accent-cyan)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: 700, color: '#000', transition: 'width 1s ease-out' }}>
+                    {prediction.monteCarlo.results.homeWinPct > 10 ? `${prediction.monteCarlo.results.homeWinPct}%` : ''}
+                  </div>
+                  <div style={{ width: `${prediction.monteCarlo.results.drawPct}%`, background: 'var(--accent-gold)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: 700, color: '#000', transition: 'width 1s ease-out' }}>
+                    {prediction.monteCarlo.results.drawPct > 10 ? `${prediction.monteCarlo.results.drawPct}%` : ''}
+                  </div>
+                  <div style={{ width: `${prediction.monteCarlo.results.awayWinPct}%`, background: 'var(--accent-red)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: 700, color: '#000', transition: 'width 1s ease-out' }}>
+                    {prediction.monteCarlo.results.awayWinPct > 10 ? `${prediction.monteCarlo.results.awayWinPct}%` : ''}
+                  </div>
+                </div>
+                
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px' }}>
+                  <div style={{ color: 'var(--accent-cyan)' }}><span style={{ fontWeight: 700 }}>{prediction.monteCarlo.results.homeWins}</span> V. Local</div>
+                  <div style={{ color: 'var(--accent-gold)' }}><span style={{ fontWeight: 700 }}>{prediction.monteCarlo.results.draws}</span> Empates</div>
+                  <div style={{ color: 'var(--accent-red)' }}><span style={{ fontWeight: 700 }}>{prediction.monteCarlo.results.awayWins}</span> V. Vis.</div>
+                </div>
+              </div>
+
+              {/* Top Scores */}
+              <div style={{ background: 'rgba(15, 22, 41, 0.7)', padding: '16px', borderRadius: '14px', border: '1px solid var(--glass-border)' }}>
+                <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginBottom: '12px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Marcadores Frecuentes</div>
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                  {prediction.monteCarlo.topScores.map((scoreObj, idx) => (
+                    <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 10px', background: 'rgba(255,255,255,0.03)', borderRadius: '8px', border: idx === 0 ? '1px solid rgba(255,170,0,0.3)' : '1px solid transparent' }}>
+                      <div style={{ fontSize: '15px', fontWeight: 800, color: idx === 0 ? 'var(--accent-gold)' : 'var(--text-primary)' }}>{scoreObj.score}</div>
+                      <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
+                        <span style={{ fontWeight: 700, color: idx === 0 ? 'var(--accent-gold)' : 'inherit' }}>{scoreObj.count}</span> de 100 veces
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
       </div>
 
       {/* Paywall Overlay */}
