@@ -169,6 +169,8 @@ function DashboardContent() {
   );
 }
 
+import HistoryTracker from './components/HistoryTracker';
+
 export default function App() {
   return (
     <BetSlipProvider>
@@ -177,6 +179,7 @@ export default function App() {
           <Route path="/" element={<DashboardContent />} />
           <Route path="/predict/:routeLeagueId" element={<DashboardContent />} />
           <Route path="/predict/:routeLeagueId/:homeId/:awayId" element={<DashboardContent />} />
+          <Route path="/tracker" element={<HistoryTracker />} />
         </Routes>
         <BetSlip />
       </BrowserRouter>

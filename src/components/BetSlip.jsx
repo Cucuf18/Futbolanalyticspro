@@ -2,7 +2,7 @@ import React from 'react';
 import { useBetSlip } from '../context/BetSlipContext';
 
 export default function BetSlip() {
-  const { slip, removeFromSlip, clearSlip } = useBetSlip();
+  const { slip, removeFromSlip, clearSlip, settleBet } = useBetSlip();
 
   if (slip.length === 0) return null;
 
@@ -42,19 +42,37 @@ export default function BetSlip() {
           }}>
             <button 
               onClick={() => removeFromSlip(pick.matchId)}
-              style={{ position: 'absolute', top: '4px', right: '4px', background: 'transparent', border: 'none', color: 'var(--accent-red)', cursor: 'pointer' }}
+              style={{ position: 'absolute', top: '4px', right: '4px', background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}
             >
               ✕
             </button>
-            <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '4px' }}>
+            <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '4px', paddingRight: '16px' }}>
               {pick.homeTeam} vs {pick.awayTeam}
             </div>
             <div style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
               Pick: <span style={{ color: 'var(--accent-cyan)', fontWeight: 600 }}>{pick.valueBetType}</span>
             </div>
-            <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '6px' }}>
-              <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Prob: {pick.probability}%</span>
-              <span style={{ fontSize: '11px', color: 'var(--accent-green)', fontWeight: 700 }}>@{pick.odds}</span>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '6px' }}>
+              <div>
+                <span style={{ fontSize: '10px', color: 'var(--text-muted)', marginRight: '8px' }}>Prob: {pick.probability}%</span>
+                <span style={{ fontSize: '10px', color: 'var(--accent-green)', fontWeight: 700 }}>@{pick.odds}</span>
+              </div>
+              <div style={{ display: 'flex', gap: '4px' }}>
+                <button 
+                  title="Marcar como Acertado"
+                  onClick={() => settleBet(pick.matchId, 'WON')}
+                  style={{ background: 'rgba(0, 230, 118, 0.1)', border: '1px solid var(--accent-green)', color: 'var(--accent-green)', borderRadius: '4px', cursor: 'pointer', padding: '2px 6px', fontSize: '12px' }}
+                >
+                  ✅
+                </button>
+                <button 
+                  title="Marcar como Fallado"
+                  onClick={() => settleBet(pick.matchId, 'LOST')}
+                  style={{ background: 'rgba(255, 59, 48, 0.1)', border: '1px solid var(--accent-red)', color: 'var(--accent-red)', borderRadius: '4px', cursor: 'pointer', padding: '2px 6px', fontSize: '12px' }}
+                >
+                  ❌
+                </button>
+              </div>
             </div>
           </div>
         ))}

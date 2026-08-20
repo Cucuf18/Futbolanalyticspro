@@ -1,35 +1,74 @@
-import React from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 
 export default function Navbar({ isPremium, onTogglePremium, onOpenPremiumModal, dataSource }) {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const isTracker = location.pathname === '/tracker';
+
   return (
     <header className="glass-card" style={{ borderRadius: 0, borderTop: 'none', borderLeft: 'none', borderRight: 'none', padding: '14px 24px', position: 'sticky', top: 0, zIndex: 100 }}>
       <div style={{ maxWidth: '1280px', margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '16px' }}>
         
-        {/* Brand */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <div style={{
-            width: '42px',
-            height: '42px',
-            borderRadius: '12px',
-            background: 'linear-gradient(135deg, #00f2fe 0%, #4facfe 100%)',
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'center',
-            fontSize: '14px',
-            fontWeight: 800,
-            color: '#080c16',
-            boxShadow: '0 4px 15px rgba(0, 242, 254, 0.4)',
-            letterSpacing: '-0.04em',
-            fontFamily: 'var(--font-heading)',
-          }}>
-            FA
+        {/* Brand & Navigation */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '32px' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+            <div style={{
+              width: '42px',
+              height: '42px',
+              borderRadius: '12px',
+              background: 'linear-gradient(135deg, #00f2fe 0%, #4facfe 100%)',
+              display: 'flex',
+              alignItems: 'center',
+              justifyContent: 'center',
+              fontSize: '14px',
+              fontWeight: 800,
+              color: '#080c16',
+              boxShadow: '0 4px 15px rgba(0, 242, 254, 0.4)',
+              letterSpacing: '-0.04em',
+              fontFamily: 'var(--font-heading)',
+            }}>
+              FA
+            </div>
+            <div>
+              <h1 style={{ fontSize: '20px', fontWeight: 800, lineHeight: 1.1 }}>
+                Futbol<span className="gradient-text">Analytics</span>
+                <span style={{ fontSize: '11px', background: 'rgba(0,242,254,0.12)', color: 'var(--accent-cyan)', padding: '2px 8px', borderRadius: '10px', border: '1px solid rgba(0,242,254,0.25)', marginLeft: '8px', fontWeight: 600, letterSpacing: '0.04em' }}>PRO</span>
+              </h1>
+              <p style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>Dashboard Estadistico & Modelado Predictivo</p>
+            </div>
           </div>
-          <div>
-            <h1 style={{ fontSize: '20px', fontWeight: 800, lineHeight: 1.1 }}>
-              Futbol<span className="gradient-text">Analytics</span>
-              <span style={{ fontSize: '11px', background: 'rgba(0,242,254,0.12)', color: 'var(--accent-cyan)', padding: '2px 8px', borderRadius: '10px', border: '1px solid rgba(0,242,254,0.25)', marginLeft: '8px', fontWeight: 600, letterSpacing: '0.04em' }}>PRO</span>
-            </h1>
-            <p style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>Dashboard Estadistico & Modelado Predictivo</p>
+
+          <div style={{ display: 'flex', gap: '16px', borderLeft: '1px solid var(--glass-border)', paddingLeft: '32px' }}>
+            <button 
+              onClick={() => navigate('/')}
+              style={{
+                background: 'transparent',
+                border: 'none',
+                color: !isTracker ? 'var(--accent-cyan)' : 'var(--text-secondary)',
+                fontWeight: !isTracker ? 800 : 500,
+                fontSize: '14px',
+                cursor: 'pointer',
+                borderBottom: !isTracker ? '2px solid var(--accent-cyan)' : '2px solid transparent',
+                paddingBottom: '4px'
+              }}
+            >
+              📊 Predictor
+            </button>
+            <button 
+              onClick={() => navigate('/tracker')}
+              style={{
+                background: 'transparent',
+                border: 'none',
+                color: isTracker ? 'var(--accent-cyan)' : 'var(--text-secondary)',
+                fontWeight: isTracker ? 800 : 500,
+                fontSize: '14px',
+                cursor: 'pointer',
+                borderBottom: isTracker ? '2px solid var(--accent-cyan)' : '2px solid transparent',
+                paddingBottom: '4px'
+              }}
+            >
+              📈 Rendimiento
+            </button>
           </div>
         </div>
 
