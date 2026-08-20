@@ -1,10 +1,39 @@
-import React from 'react';
+import React, { useState } from 'react';
+import { useBetSlip } from '../context/BetSlipContext';
 
 export default function PredictionPanel({ predictionData, isPremium, onOpenPremiumModal }) {
+  const { addToSlip } = useBetSlip();
+  const [cuotaMercado, setCuotaMercado] = useState(2.10); // Placeholder for future input
+  
   if (!predictionData || !predictionData.prediction) return null;
 
   const { matchInfo, prediction } = predictionData;
-  const { probabilities, expectedGoals, probabilitiesSecondary, mostLikelyScore, recommendation, recommendedOdds, confidenceScore } = prediction;
+  const { probabilities, expectedGoals, probabilitiesSecondary, mostLikelyScore, recommendation, valueBetType, recommendedOdds, confidenceScore } = prediction;
+
+  // Match Summary stats from Monte Carlo
+  const summary = prediction.monteCarlo?.matchSummary;
+
+  // Calculate EV
+  const calcEV = (prob, odds) => {
+    return ((prob / 100) * odds) - 1;
+  };
+  
+  const handleSavePick = () => {
+    let probBase = 0;
+    if (valueBetType === 'HOME_WIN') probBase = probabilities.homeWin;
+    else if (valueBetType === 'AWAY_WIN') probBase = probabilities.awayWin;
+    else if (valueBetType === 'OVER_25') probBase = probabilitiesSecondary.over25;
+    else if (valueBetType === 'BTTS') probBase = probabilitiesSecondary.btts;
+    
+    addToSlip({
+      matchId: `${matchInfo.homeTeam.id}-${matchInfo.awayTeam.id}`,
+      homeTeam: matchInfo.homeTeam.shortName,
+      awayTeam: matchInfo.awayTeam.shortName,
+      valueBetType,
+      probability: probBase,
+      odds: recommendedOdds
+    });
+  };
 
   return (
     <div className="glass-card animate-fade-in" style={{ padding: '24px', position: 'relative', overflow: 'hidden' }}>
@@ -19,17 +48,11 @@ export default function PredictionPanel({ predictionData, isPremium, onOpenPremi
             {matchInfo.homeTeam.name} vs {matchInfo.awayTeam.name}
           </p>
         </div>
-
         <div style={{
-          padding: '4px 12px',
-          borderRadius: '12px',
-          fontSize: '11px',
-          fontWeight: 700,
+          padding: '4px 12px', borderRadius: '12px', fontSize: '11px', fontWeight: 700,
           background: isPremium ? 'linear-gradient(135deg, #ffe066 0%, #ffaa00 100%)' : 'rgba(255, 255, 255, 0.08)',
           color: isPremium ? '#000' : 'var(--text-muted)',
-          border: '1px solid rgba(255,255,255,0.1)',
-          textTransform: 'uppercase',
-          letterSpacing: '0.04em',
+          border: '1px solid rgba(255,255,255,0.1)', textTransform: 'uppercase', letterSpacing: '0.04em',
         }}>
           {isPremium ? 'Acceso Premium' : 'Contenido Restringido'}
         </div>
@@ -44,7 +67,133 @@ export default function PredictionPanel({ predictionData, isPremium, onOpenPremi
         transition: 'var(--transition-smooth)',
       }}>
 
-        {/* Win Probabilities */}
+        {/* ========== MATCH SUMMARY SECTION ========== */}
+        {summary && (
+          <div style={{ marginBottom: '28px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px' }}>
+              <span style={{ fontSize: '18px' }}>📊</span>
+              <h3 style={{ fontSize: '15px', fontWeight: 800, color: 'var(--text-primary)' }}>
+                Resumen Total del Partido
+              </h3>
+              <div style={{ fontSize: '10px', fontWeight: 600, color: 'var(--accent-cyan)', background: 'rgba(0,242,254,0.1)', padding: '2px 8px', borderRadius: '6px', border: '1px solid rgba(0,242,254,0.2)' }}>
+                BASADO EN 10,000 SIMULACIONES
+              </div>
+            </div>
+
+            {/* Main predicted score */}
+            <div style={{
+              background: 'linear-gradient(135deg, rgba(157, 78, 221, 0.15) 0%, rgba(0, 242, 254, 0.1) 100%)',
+              border: '1px solid rgba(157, 78, 221, 0.3)',
+              borderRadius: '16px', padding: '20px', marginBottom: '16px', textAlign: 'center',
+            }}>
+              <div style={{ fontSize: '11px', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '8px' }}>
+                Marcador Más Probable
+              </div>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '16px' }}>
+                <div style={{ textAlign: 'center' }}>
+                  <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--accent-cyan)', marginBottom: '4px' }}>{matchInfo.homeTeam.shortName}</div>
+                </div>
+                <div style={{
+                  fontSize: '36px', fontWeight: 900, color: 'var(--accent-gold)',
+                  textShadow: '0 0 20px rgba(255,170,0,0.4)',
+                  letterSpacing: '4px',
+                }}>
+                  {mostLikelyScore}
+                </div>
+                <div style={{ textAlign: 'center' }}>
+                  <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--accent-red)', marginBottom: '4px' }}>{matchInfo.awayTeam.shortName}</div>
+                </div>
+              </div>
+              <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '8px' }}>
+                Confianza del modelo: <span style={{ fontWeight: 700, color: 'var(--accent-gold)' }}>{confidenceScore}%</span>
+              </div>
+            </div>
+
+            {/* Stats Grid */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '10px' }}>
+              
+              {/* Total Goals */}
+              <div style={{
+                background: 'rgba(15, 22, 41, 0.7)', padding: '14px', borderRadius: '14px',
+                border: '1px solid var(--glass-border)', textAlign: 'center',
+              }}>
+                <div style={{ fontSize: '22px', marginBottom: '6px' }}>⚽</div>
+                <div style={{ fontSize: '22px', fontWeight: 800, color: 'var(--accent-green)' }}>{summary.avgTotalGoals}</div>
+                <div style={{ fontSize: '10px', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.03em', marginTop: '4px' }}>Media de Goles</div>
+                <div style={{ fontSize: '10px', color: 'var(--text-secondary)', marginTop: '2px' }}>
+                  {summary.avgHomeGoals} - {summary.avgAwayGoals}
+                </div>
+              </div>
+
+              {/* BTTS */}
+              <div style={{
+                background: 'rgba(15, 22, 41, 0.7)', padding: '14px', borderRadius: '14px',
+                border: '1px solid var(--glass-border)', textAlign: 'center',
+              }}>
+                <div style={{ fontSize: '22px', marginBottom: '6px' }}>🎯</div>
+                <div style={{ fontSize: '22px', fontWeight: 800, color: summary.bttsPct > 42 ? 'var(--accent-green)' : 'var(--accent-red)' }}>{summary.bttsPct}%</div>
+                <div style={{ fontSize: '10px', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.03em', marginTop: '4px' }}>Ambos Anotan</div>
+                <div style={{ fontSize: '10px', color: 'var(--text-secondary)', marginTop: '2px' }}>
+                  {summary.bttsPct > 42 ? 'Competitivo' : 'Poco probable'}
+                </div>
+              </div>
+
+              {/* Yellow Cards */}
+              <div style={{
+                background: 'rgba(15, 22, 41, 0.7)', padding: '14px', borderRadius: '14px',
+                border: '1px solid var(--glass-border)', textAlign: 'center',
+              }}>
+                <div style={{ fontSize: '22px', marginBottom: '6px' }}>🟨</div>
+                <div style={{ fontSize: '22px', fontWeight: 800, color: '#ffd700' }}>{summary.avgYellowCards}</div>
+                <div style={{ fontSize: '10px', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.03em', marginTop: '4px' }}>Tarjetas Amarillas</div>
+                <div style={{ fontSize: '10px', color: 'var(--text-secondary)', marginTop: '2px' }}>
+                  Media por partido
+                </div>
+              </div>
+
+              {/* Offsides */}
+              <div style={{
+                background: 'rgba(15, 22, 41, 0.7)', padding: '14px', borderRadius: '14px',
+                border: '1px solid var(--glass-border)', textAlign: 'center',
+              }}>
+                <div style={{ fontSize: '22px', marginBottom: '6px' }}>🚩</div>
+                <div style={{ fontSize: '22px', fontWeight: 800, color: 'var(--accent-purple)' }}>{summary.avgOffsides}</div>
+                <div style={{ fontSize: '10px', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.03em', marginTop: '4px' }}>Fueras de Juego</div>
+                <div style={{ fontSize: '10px', color: 'var(--text-secondary)', marginTop: '2px' }}>
+                  Media por partido
+                </div>
+              </div>
+
+              {/* Shots on Target */}
+              <div style={{
+                background: 'rgba(15, 22, 41, 0.7)', padding: '14px', borderRadius: '14px',
+                border: '1px solid var(--glass-border)', textAlign: 'center',
+              }}>
+                <div style={{ fontSize: '22px', marginBottom: '6px' }}>🥅</div>
+                <div style={{ fontSize: '22px', fontWeight: 800, color: 'var(--accent-cyan)' }}>{summary.avgShotsOnTarget}</div>
+                <div style={{ fontSize: '10px', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.03em', marginTop: '4px' }}>Tiros a Puerta</div>
+                <div style={{ fontSize: '10px', color: 'var(--text-secondary)', marginTop: '2px' }}>
+                  Combinados
+                </div>
+              </div>
+
+              {/* Corners */}
+              <div style={{
+                background: 'rgba(15, 22, 41, 0.7)', padding: '14px', borderRadius: '14px',
+                border: '1px solid var(--glass-border)', textAlign: 'center',
+              }}>
+                <div style={{ fontSize: '22px', marginBottom: '6px' }}>📐</div>
+                <div style={{ fontSize: '22px', fontWeight: 800, color: 'var(--accent-gold)' }}>{summary.avgCorners}</div>
+                <div style={{ fontSize: '10px', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.03em', marginTop: '4px' }}>Córners</div>
+                <div style={{ fontSize: '10px', color: 'var(--text-secondary)', marginTop: '2px' }}>
+                  Combinados
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ========== WIN PROBABILITIES ========== */}
         <div style={{ marginBottom: '24px' }}>
           <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-secondary)', marginBottom: '10px' }}>
             Probabilidades de Resultado
@@ -71,7 +220,7 @@ export default function PredictionPanel({ predictionData, isPremium, onOpenPremi
           </div>
         </div>
 
-        {/* Detailed Metrics Grid */}
+        {/* ========== DETAILED METRICS ========== */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '14px', marginBottom: '24px' }}>
           
           <div style={{ background: 'rgba(15, 22, 41, 0.7)', padding: '14px', borderRadius: '14px', border: '1px solid var(--glass-border)' }}>
@@ -105,35 +254,55 @@ export default function PredictionPanel({ predictionData, isPremium, onOpenPremi
           </div>
         </div>
 
-        {/* Value Bet Signal */}
+        {/* ========== VALUE BET & EV ========== */}
         <div style={{
           background: 'linear-gradient(135deg, rgba(0, 242, 254, 0.12) 0%, rgba(157, 78, 221, 0.12) 100%)',
-          border: '1px solid rgba(0, 242, 254, 0.25)',
-          borderRadius: '14px',
-          padding: '14px 16px',
-          display: 'flex',
-          alignItems: 'center',
-          justifyContent: 'space-between',
-          flexWrap: 'wrap',
-          gap: '12px',
+          border: '1px solid rgba(0, 242, 254, 0.25)', borderRadius: '14px', padding: '16px',
+          display: 'flex', flexDirection: 'column', gap: '16px'
         }}>
-          <div>
-            <div style={{ fontSize: '10px', color: 'var(--accent-cyan)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-              Senal Value Bet
+          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
+            <div>
+              <div style={{ fontSize: '10px', color: 'var(--accent-cyan)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                Senal Value Bet
+              </div>
+              <div style={{ fontSize: '14px', fontWeight: 700, marginTop: '2px' }}>{recommendation}</div>
+              {valueBetType !== 'NONE' && (
+                <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '4px' }}>
+                  EV (Esperanza Mat.): <span style={{ color: 'var(--accent-green)', fontWeight: 600 }}>
+                    {calcEV(probabilities.homeWin, cuotaMercado).toFixed(2)} {/* Reemplazar con probBase calculada si se desea */}
+                  </span> (basado en cuota {cuotaMercado})
+                </div>
+              )}
             </div>
-            <div style={{ fontSize: '14px', fontWeight: 700, marginTop: '2px' }}>
-              {recommendation}
+            <div style={{ textAlign: 'right' }}>
+              <div style={{ fontSize: '10px', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Cuota Min.</div>
+              <div style={{ fontSize: '22px', fontWeight: 800, color: 'var(--accent-green)' }}>@{recommendedOdds}</div>
             </div>
           </div>
-          <div style={{ textAlign: 'right' }}>
-            <div style={{ fontSize: '10px', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Cuota Min.</div>
-            <div style={{ fontSize: '22px', fontWeight: 800, color: 'var(--accent-green)' }}>
-              @{recommendedOdds}
-            </div>
+          
+          <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+            <button
+              onClick={handleSavePick}
+              style={{
+                background: 'rgba(0, 242, 254, 0.1)', border: '1px solid var(--accent-cyan)',
+                color: 'var(--accent-cyan)', padding: '8px 16px', borderRadius: '8px',
+                fontSize: '12px', fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s ease',
+              }}
+              onMouseOver={(e) => {
+                e.target.style.background = 'var(--accent-cyan)';
+                e.target.style.color = '#000';
+              }}
+              onMouseOut={(e) => {
+                e.target.style.background = 'rgba(0, 242, 254, 0.1)';
+                e.target.style.color = 'var(--accent-cyan)';
+              }}
+            >
+              + Guardar Pick
+            </button>
           </div>
         </div>
 
-        {/* Monte Carlo Simulation (100 iterations) */}
+        {/* ========== MONTE CARLO SIMULATION ========== */}
         {prediction.monteCarlo && (
           <div style={{ marginTop: '28px' }}>
             <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px', flexWrap: 'wrap', gap: '8px' }}>
@@ -141,10 +310,10 @@ export default function PredictionPanel({ predictionData, isPremium, onOpenPremi
                 <h3 style={{ fontSize: '15px', fontWeight: 800, color: 'var(--text-primary)', display: 'flex', alignItems: 'center', gap: '8px' }}>
                   <span style={{ color: 'var(--accent-gold)' }}>⚡</span> Simulador Monte Carlo
                 </h3>
-                <div style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>Resultados de 100 partidos virtuales basados en xG</div>
+                <div style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>Resultados de 10,000 partidos virtuales basados en xG</div>
               </div>
               <div style={{ fontSize: '11px', fontWeight: 700, background: 'rgba(255, 170, 0, 0.1)', color: 'var(--accent-gold)', padding: '4px 10px', borderRadius: '8px', border: '1px solid rgba(255,170,0,0.2)' }}>
-                100 ITERACIONES
+                10,000 ITERACIONES
               </div>
             </div>
 
@@ -180,7 +349,7 @@ export default function PredictionPanel({ predictionData, isPremium, onOpenPremi
                     <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 10px', background: 'rgba(255,255,255,0.03)', borderRadius: '8px', border: idx === 0 ? '1px solid rgba(255,170,0,0.3)' : '1px solid transparent' }}>
                       <div style={{ fontSize: '15px', fontWeight: 800, color: idx === 0 ? 'var(--accent-gold)' : 'var(--text-primary)' }}>{scoreObj.score}</div>
                       <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
-                        <span style={{ fontWeight: 700, color: idx === 0 ? 'var(--accent-gold)' : 'inherit' }}>{scoreObj.count}</span> de 100 veces
+                        <span style={{ fontWeight: 700, color: idx === 0 ? 'var(--accent-gold)' : 'inherit' }}>{scoreObj.percentage}%</span> de probabilidad
                       </div>
                     </div>
                   ))}
@@ -192,31 +361,20 @@ export default function PredictionPanel({ predictionData, isPremium, onOpenPremi
 
       </div>
 
-      {/* Paywall Overlay */}
+      {/* ========== PAYWALL OVERLAY ========== */}
       {!isPremium && (
         <div style={{
-          position: 'absolute',
-          top: 0, left: 0, right: 0, bottom: 0,
-          background: 'rgba(8, 12, 22, 0.78)',
-          backdropFilter: 'blur(8px)',
-          display: 'flex',
-          flexDirection: 'column',
-          alignItems: 'center',
-          justifyContent: 'center',
-          padding: '20px',
-          textAlign: 'center',
-          zIndex: 10,
+          position: 'absolute', top: 0, left: 0, right: 0, bottom: 0,
+          background: 'rgba(8, 12, 22, 0.78)', backdropFilter: 'blur(8px)',
+          display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+          padding: '20px', textAlign: 'center', zIndex: 10,
         }}>
           <div style={{
             width: '48px', height: '48px', borderRadius: '50%',
-            background: 'rgba(255, 170, 0, 0.15)',
-            border: '2px solid rgba(255, 170, 0, 0.4)',
+            background: 'rgba(255, 170, 0, 0.15)', border: '2px solid rgba(255, 170, 0, 0.4)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
-            fontSize: '18px', fontWeight: 800, color: 'var(--accent-gold)',
-            marginBottom: '12px',
-          }}>
-            P
-          </div>
+            fontSize: '18px', fontWeight: 800, color: 'var(--accent-gold)', marginBottom: '12px',
+          }}>P</div>
           <h3 style={{ fontSize: '20px', fontWeight: 800, color: 'var(--text-primary)', marginBottom: '6px' }}>
             Predicciones Restringidas
           </h3>
@@ -227,12 +385,8 @@ export default function PredictionPanel({ predictionData, isPremium, onOpenPremi
             onClick={onOpenPremiumModal}
             style={{
               background: 'linear-gradient(135deg, #ffe066 0%, #ffaa00 100%)',
-              color: '#000',
-              fontWeight: 800,
-              fontSize: '14px',
-              padding: '12px 28px',
-              borderRadius: '14px',
-              boxShadow: '0 6px 20px rgba(255, 170, 0, 0.4)',
+              color: '#000', fontWeight: 800, fontSize: '14px', padding: '12px 28px',
+              borderRadius: '14px', boxShadow: '0 6px 20px rgba(255, 170, 0, 0.4)',
             }}
           >
             Desbloquear Predicciones

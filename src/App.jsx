@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import { BrowserRouter, Routes, Route, useParams, useNavigate } from 'react-router-dom';
 import Navbar from './components/Navbar';
 import LeagueSelector from './components/LeagueSelector';
 import MetricsTable from './components/MetricsTable';
@@ -6,6 +7,8 @@ import H2HViewer from './components/H2HViewer';
 import PredictionPanel from './components/PredictionPanel';
 import AdBanner from './components/AdBanner';
 import PremiumModal from './components/PremiumModal';
+import { BetSlipProvider } from './context/BetSlipContext';
+import BetSlip from './components/BetSlip';
 
 const LEAGUES = [
   { id: 'PL', name: 'Premier League', country: 'Inglaterra', code: 'ENG' },
@@ -15,11 +18,13 @@ const LEAGUES = [
   { id: 'CL', name: 'Champions League', country: 'Europa', code: 'UCL' },
 ];
 
-export default function App() {
-  const [selectedLeague, setSelectedLeague] = useState('PL');
+function DashboardContent() {
+  const { routeLeagueId, homeId, awayId } = useParams();
+  const navigate = useNavigate();
+  
+  const selectedLeague = routeLeagueId || 'PL';
+  
   const [standingsData, setStandingsData] = useState(null);
-  const [homeTeamId, setHomeTeamId] = useState(null);
-  const [awayTeamId, setAwayTeamId] = useState(null);
   const [h2hData, setH2hData] = useState(null);
   const [predictionData, setPredictionData] = useState(null);
   const [isPremium, setIsPremium] = useState(false);
@@ -31,8 +36,6 @@ export default function App() {
   useEffect(() => {
     async function loadStandings() {
       setLoading(true);
-      setH2hData(null);
-      setPredictionData(null);
       try {
         const res = await fetch(`/api/standings/${selectedLeague}`);
         const result = await res.json();
@@ -40,9 +43,12 @@ export default function App() {
           setStandingsData(result.data);
           setDataSource(result.data.dataSource || 'simulated');
           const teams = result.data.teams || [];
-          if (teams.length >= 2) {
-            setHomeTeamId(teams[0].id);
-            setAwayTeamId(teams[1].id);
+          
+          // Si no hay ids en la URL, auto-seleccionar los dos primeros y navegar
+          if (!homeId || !awayId) {
+            if (teams.length >= 2) {
+              navigate(`/predict/${selectedLeague}/${teams[0].id}/${teams[1].id}`, { replace: true });
+            }
           }
         }
       } catch (err) {
@@ -52,17 +58,19 @@ export default function App() {
       }
     }
     loadStandings();
-  }, [selectedLeague]);
+  }, [selectedLeague, homeId, awayId, navigate]);
 
-  // Fetch H2H & prediction when teams change
+  // Fetch H2H & prediction when teams change (basado en la URL)
   useEffect(() => {
-    if (!homeTeamId || !awayTeamId || homeTeamId === awayTeamId) return;
+    if (!homeId || !awayId || homeId === awayId) return;
 
     async function loadMatchDetails() {
+      setH2hData(null);
+      setPredictionData(null);
       try {
         const [h2hRes, predRes] = await Promise.all([
-          fetch(`/api/h2h/${homeTeamId}/${awayTeamId}?leagueId=${selectedLeague}`),
-          fetch(`/api/predict/${homeTeamId}/${awayTeamId}?leagueId=${selectedLeague}`),
+          fetch(`/api/h2h/${homeId}/${awayId}?leagueId=${selectedLeague}`),
+          fetch(`/api/predict/${homeId}/${awayId}?leagueId=${selectedLeague}`),
         ]);
         const h2hJson = await h2hRes.json();
         const predJson = await predRes.json();
@@ -73,11 +81,26 @@ export default function App() {
       }
     }
     loadMatchDetails();
-  }, [homeTeamId, awayTeamId, selectedLeague]);
+  }, [homeId, awayId, selectedLeague]);
+
+  const handleSelectLeague = (id) => {
+    navigate(`/predict/${id}`);
+  };
+
+  const handleSelectHomeTeam = (id) => {
+    let newAway = awayId;
+    if (id === awayId) newAway = homeId;
+    navigate(`/predict/${selectedLeague}/${id}/${newAway}`);
+  };
+
+  const handleSelectAwayTeam = (id) => {
+    let newHome = homeId;
+    if (id === homeId) newHome = awayId;
+    navigate(`/predict/${selectedLeague}/${newHome}/${id}`);
+  };
 
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
-      
       <Navbar
         isPremium={isPremium}
         onTogglePremium={(status) => setIsPremium(status)}
@@ -86,18 +109,17 @@ export default function App() {
       />
 
       <main style={{ maxWidth: '1280px', width: '100%', margin: '0 auto', padding: '24px 16px', flex: 1 }}>
-        
         <div style={{ marginBottom: '20px' }}>
           <LeagueSelector
             leagues={LEAGUES}
             selectedLeague={selectedLeague}
-            onSelectLeague={(id) => setSelectedLeague(id)}
+            onSelectLeague={handleSelectLeague}
           />
         </div>
 
         {!isPremium && <AdBanner slotId="top-header-ad" />}
 
-        {loading ? (
+        {loading && (!standingsData) ? (
           <div style={{ textAlign: 'center', padding: '60px 20px', color: 'var(--text-secondary)' }}>
             <div style={{
               width: '40px', height: '40px', borderRadius: '50%',
@@ -110,29 +132,24 @@ export default function App() {
           </div>
         ) : (
           <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '24px' }}>
-            
             <MetricsTable
               standings={standingsData}
-              homeTeamId={homeTeamId}
-              awayTeamId={awayTeamId}
-              onSelectHomeTeam={(id) => {
-                if (id === awayTeamId) setAwayTeamId(homeTeamId);
-                setHomeTeamId(id);
-              }}
-              onSelectAwayTeam={(id) => {
-                if (id === homeTeamId) setHomeTeamId(awayTeamId);
-                setAwayTeamId(id);
-              }}
+              homeTeamId={Number(homeId)}
+              awayTeamId={Number(awayId)}
+              onSelectHomeTeam={handleSelectHomeTeam}
+              onSelectAwayTeam={handleSelectAwayTeam}
             />
 
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: '24px' }}>
-              <H2HViewer h2hData={h2hData} />
-              <PredictionPanel
-                predictionData={predictionData}
-                isPremium={isPremium}
-                onOpenPremiumModal={() => setIsPremiumModalOpen(true)}
-              />
-            </div>
+            {(homeId && awayId) && (
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: '24px' }}>
+                <H2HViewer h2hData={h2hData} />
+                <PredictionPanel
+                  predictionData={predictionData}
+                  isPremium={isPremium}
+                  onOpenPremiumModal={() => setIsPremiumModalOpen(true)}
+                />
+              </div>
+            )}
 
             {!isPremium && <AdBanner slotId="bottom-content-ad" />}
           </div>
@@ -149,5 +166,20 @@ export default function App() {
         onActivatePremium={() => setIsPremium(true)}
       />
     </div>
+  );
+}
+
+export default function App() {
+  return (
+    <BetSlipProvider>
+      <BrowserRouter>
+        <Routes>
+          <Route path="/" element={<DashboardContent />} />
+          <Route path="/predict/:routeLeagueId" element={<DashboardContent />} />
+          <Route path="/predict/:routeLeagueId/:homeId/:awayId" element={<DashboardContent />} />
+        </Routes>
+        <BetSlip />
+      </BrowserRouter>
+    </BetSlipProvider>
   );
 }

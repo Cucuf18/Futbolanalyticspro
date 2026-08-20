@@ -299,14 +299,36 @@ export async function getH2HHistory(homeTeamId, awayTeamId, leagueId = 'PL') {
       }
 
       if (apiData?.matches?.length) {
-        const h2hMatches = apiData.matches
-          .filter((m) =>
-            (m.homeTeam.id === homeTeam.id && m.awayTeam.id === awayTeam.id) ||
-            (m.homeTeam.id === awayTeam.id && m.awayTeam.id === homeTeam.id)
-          )
-          .slice(0, 5);
-        if (h2hMatches.length > 0) {
-          h2hResult = formatApiH2H(homeTeam, awayTeam, h2hMatches);
+        // Step 1: Find any match between these two teams to get a valid matchId
+        const sharedMatch = apiData.matches.find((m) =>
+          (m.homeTeam.id === homeTeam.id && m.awayTeam.id === awayTeam.id) ||
+          (m.homeTeam.id === awayTeam.id && m.awayTeam.id === homeTeam.id)
+        );
+
+        if (sharedMatch) {
+          try {
+            // Step 2: Use the matchId to query the explicit head2head endpoint
+            const h2hData = await fetchFromApi(`/matches/${sharedMatch.id}/head2head?limit=15`);
+            if (h2hData && h2hData.matches && h2hData.matches.length > 0) {
+              h2hResult = formatApiH2H(homeTeam, awayTeam, h2hData.matches);
+            }
+          } catch (err) {
+            console.warn(`[API] Failed to fetch explicit H2H for match ${sharedMatch.id}`, err.message);
+          }
+        }
+        
+        // Step 3: Fallback si el endpoint falla o no devuelve matches
+        if (!h2hResult) {
+          const recentH2H = apiData.matches
+            .filter((m) =>
+              (m.homeTeam.id === homeTeam.id && m.awayTeam.id === awayTeam.id) ||
+              (m.homeTeam.id === awayTeam.id && m.awayTeam.id === homeTeam.id)
+            )
+            .slice(0, 10);
+            
+          if (recentH2H.length > 0) {
+            h2hResult = formatApiH2H(homeTeam, awayTeam, recentH2H);
+          }
         }
       }
     } catch (e) {
@@ -358,13 +380,27 @@ function generateH2H(homeTeam, awayTeam) {
 }
 
 function formatApiH2H(homeTeam, awayTeam, apiMatches) {
-  const matches = apiMatches.map((m) => ({
-    date: m.utcDate?.slice(0, 10),
-    homeScore: m.score?.fullTime?.home ?? 0,
-    awayScore: m.score?.fullTime?.away ?? 0,
-    winner: m.score?.winner === 'HOME_TEAM' ? m.homeTeam.name : m.score?.winner === 'AWAY_TEAM' ? m.awayTeam.name : 'Empate',
-    venue: m.homeTeam.name,
-  }));
+  const matches = apiMatches.map((m) => {
+    const actualHomeScore = m.score?.fullTime?.home ?? 0;
+    const actualAwayScore = m.score?.fullTime?.away ?? 0;
+    
+    // Determine the winner name
+    const winnerName = m.score?.winner === 'HOME_TEAM' ? m.homeTeam.name 
+                     : m.score?.winner === 'AWAY_TEAM' ? m.awayTeam.name 
+                     : 'Empate';
+    
+    const h2hHomeWasActualHome = m.homeTeam.id === homeTeam.id;
+    
+    return {
+      date: m.utcDate?.slice(0, 10),
+      homeScore: h2hHomeWasActualHome ? actualHomeScore : actualAwayScore,
+      awayScore: h2hHomeWasActualHome ? actualAwayScore : actualHomeScore,
+      winner: winnerName,
+      venue: m.homeTeam.name,
+      competition: m.competition?.name || m.competition?.code || 'Unknown',
+    };
+  });
+
   let homeWins = 0, awayWins = 0, draws = 0;
   matches.forEach((m) => {
     if (m.winner === homeTeam.name) homeWins++;
