@@ -8,7 +8,7 @@ export default function PredictionPanel({ predictionData, isPremium, onOpenPremi
   if (!predictionData || !predictionData.prediction) return null;
 
   const { matchInfo, prediction } = predictionData;
-  const { probabilities, expectedGoals, probabilitiesSecondary, mostLikelyScore, recommendation, valueBetType, recommendedOdds, confidenceScore } = prediction;
+  const { probabilities, expectedGoals, probabilitiesSecondary, mostLikelyScore, fairOdds, topPredictions, confidenceScore } = prediction;
 
   // Match Summary stats from Monte Carlo
   const summary = prediction.monteCarlo?.matchSummary;
@@ -18,20 +18,14 @@ export default function PredictionPanel({ predictionData, isPremium, onOpenPremi
     return ((prob / 100) * odds) - 1;
   };
   
-  const handleSavePick = () => {
-    let probBase = 0;
-    if (valueBetType === 'HOME_WIN') probBase = probabilities.homeWin;
-    else if (valueBetType === 'AWAY_WIN') probBase = probabilities.awayWin;
-    else if (valueBetType === 'OVER_25') probBase = probabilitiesSecondary.over25;
-    else if (valueBetType === 'BTTS') probBase = probabilitiesSecondary.btts;
-    
+  const handleSavePick = (pick) => {
     addToSlip({
-      matchId: `${matchInfo.homeTeam.id}-${matchInfo.awayTeam.id}`,
+      matchId: `${matchInfo.homeTeam.id}-${matchInfo.awayTeam.id}-${pick.type}`,
       homeTeam: matchInfo.homeTeam.shortName,
       awayTeam: matchInfo.awayTeam.shortName,
-      valueBetType,
-      probability: probBase,
-      odds: recommendedOdds
+      valueBetType: pick.type,
+      probability: pick.probability,
+      odds: cuotaMercado || pick.fairOdds
     });
   };
 
@@ -255,51 +249,84 @@ export default function PredictionPanel({ predictionData, isPremium, onOpenPremi
         </div>
 
         {/* ========== VALUE BET & EV ========== */}
-        <div style={{
-          background: 'linear-gradient(135deg, rgba(0, 242, 254, 0.12) 0%, rgba(157, 78, 221, 0.12) 100%)',
-          border: '1px solid rgba(0, 242, 254, 0.25)', borderRadius: '14px', padding: '16px',
-          display: 'flex', flexDirection: 'column', gap: '16px'
-        }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
-            <div>
-              <div style={{ fontSize: '10px', color: 'var(--accent-cyan)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                Senal Value Bet
+        {/* ========== VALUE BET & EV ========== */}
+        <div style={{ marginTop: '24px' }}>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+            <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-secondary)' }}>
+              Top Picks & Cuotas Justas (Fair Odds)
+            </div>
+            {topPredictions && topPredictions.length > 0 && (
+              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
+                <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Cuota Casa:</span>
+                <input 
+                  type="number" 
+                  step="0.01" 
+                  value={cuotaMercado} 
+                  onChange={(e) => setCuotaMercado(Number(e.target.value))}
+                  style={{ width: '60px', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--glass-border)', color: 'white', padding: '4px 8px', borderRadius: '4px', fontSize: '12px' }}
+                />
               </div>
-              <div style={{ fontSize: '14px', fontWeight: 700, marginTop: '2px' }}>{recommendation}</div>
-              {valueBetType !== 'NONE' && (
-                <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '4px' }}>
-                  EV (Esperanza Mat.): <span style={{ color: 'var(--accent-green)', fontWeight: 600 }}>
-                    {calcEV(probabilities.homeWin, cuotaMercado).toFixed(2)} {/* Reemplazar con probBase calculada si se desea */}
-                  </span> (basado en cuota {cuotaMercado})
-                </div>
-              )}
-            </div>
-            <div style={{ textAlign: 'right' }}>
-              <div style={{ fontSize: '10px', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Cuota Min.</div>
-              <div style={{ fontSize: '22px', fontWeight: 800, color: 'var(--accent-green)' }}>@{recommendedOdds}</div>
-            </div>
+            )}
           </div>
           
-          <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-            <button
-              onClick={handleSavePick}
-              style={{
-                background: 'rgba(0, 242, 254, 0.1)', border: '1px solid var(--accent-cyan)',
-                color: 'var(--accent-cyan)', padding: '8px 16px', borderRadius: '8px',
-                fontSize: '12px', fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s ease',
-              }}
-              onMouseOver={(e) => {
-                e.target.style.background = 'var(--accent-cyan)';
-                e.target.style.color = '#000';
-              }}
-              onMouseOut={(e) => {
-                e.target.style.background = 'rgba(0, 242, 254, 0.1)';
-                e.target.style.color = 'var(--accent-cyan)';
-              }}
-            >
-              + Guardar Pick
-            </button>
-          </div>
+          {(!topPredictions || topPredictions.length === 0) ? (
+            <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px dashed rgba(255,255,255,0.1)', padding: '20px', borderRadius: '14px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '13px' }}>
+              El motor estadístico no ha detectado apuestas de valor EV+ claro para este encuentro.
+            </div>
+          ) : (
+            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+              {topPredictions.map((pick, idx) => {
+                const currentEV = calcEV(pick.probability, cuotaMercado);
+                const isPositiveEV = currentEV > 0;
+                
+                return (
+                  <div key={idx} style={{
+                    background: 'linear-gradient(135deg, rgba(0, 242, 254, 0.08) 0%, rgba(157, 78, 221, 0.08) 100%)',
+                    border: '1px solid rgba(0, 242, 254, 0.2)', borderRadius: '14px', padding: '16px',
+                    display: 'flex', flexDirection: 'column', gap: '12px'
+                  }}>
+                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
+                      <div>
+                        <div style={{ fontSize: '10px', color: 'var(--accent-cyan)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                          Senal {pick.evThreshold}
+                        </div>
+                        <div style={{ fontSize: '15px', fontWeight: 700, marginTop: '4px' }}>{pick.label}</div>
+                        <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '6px' }}>
+                          Prob: <span style={{ color: 'white', fontWeight: 600 }}>{pick.probability}%</span> &nbsp;|&nbsp; 
+                          EV Mercado: <span style={{ color: isPositiveEV ? 'var(--accent-green)' : 'var(--accent-red)', fontWeight: 600 }}>{currentEV.toFixed(2)}</span>
+                        </div>
+                      </div>
+                      <div style={{ textAlign: 'right' }}>
+                        <div style={{ fontSize: '10px', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Cuota Justa (0% Margen)</div>
+                        <div style={{ fontSize: '20px', fontWeight: 800, color: 'var(--accent-cyan)' }}>@{pick.fairOdds}</div>
+                      </div>
+                    </div>
+                    
+                    <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
+                      <button
+                        onClick={() => handleSavePick(pick)}
+                        style={{
+                          background: 'rgba(0, 242, 254, 0.1)', border: '1px solid var(--accent-cyan)',
+                          color: 'var(--accent-cyan)', padding: '6px 14px', borderRadius: '8px',
+                          fontSize: '11px', fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s ease',
+                        }}
+                        onMouseOver={(e) => {
+                          e.target.style.background = 'var(--accent-cyan)';
+                          e.target.style.color = '#000';
+                        }}
+                        onMouseOut={(e) => {
+                          e.target.style.background = 'rgba(0, 242, 254, 0.1)';
+                          e.target.style.color = 'var(--accent-cyan)';
+                        }}
+                      >
+                        + Guardar Pick
+                      </button>
+                    </div>
+                  </div>
+                );
+              })}
+            </div>
+          )}
         </div>
 
         {/* ========== MONTE CARLO SIMULATION ========== */}

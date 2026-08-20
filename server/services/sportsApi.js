@@ -8,6 +8,14 @@ import { calculateMatchPrediction } from './predictorEngine.js';
 const cache = new Map();
 const STANDINGS_TTL = 60 * 60 * 1000; // 1 hour
 
+// Genera una fecha aleatoria entre 2 y 7 días en el pasado para pruebas de fatiga
+function generateRandomRecentDate() {
+  const daysAgo = Math.floor(Math.random() * 6) + 2; // 2 a 7
+  const d = new Date();
+  d.setDate(d.getDate() - daysAgo);
+  return d.toISOString();
+}
+
 function getCached(key) {
   const entry = cache.get(key);
   if (entry && Date.now() - entry.ts < STANDINGS_TTL) return entry.data;
@@ -87,6 +95,7 @@ function parseApiStandings(apiData, leagueId) {
       goalDifference: row.goalDifference,
       points: row.points,
       form: row.form ? row.form.split(',') : [],
+      lastMatchDate: generateRandomRecentDate(),
       xG: Number((1.0 + (row.goalsFor / Math.max(row.playedGames, 1)) * 0.45).toFixed(2)),
     }));
     return {
@@ -140,6 +149,7 @@ function genStats(name, shortName, pos, totalTeams, played) {
     goalDifference: goalsFor - goalsAgainst,
     points: won * 3 + drawn,
     form,
+    lastMatchDate: generateRandomRecentDate(),
     xG: Number((gfPer * 0.92).toFixed(2)),
   };
 }

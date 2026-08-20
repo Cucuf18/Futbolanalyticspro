@@ -30,26 +30,86 @@ function generatePoissonRandom(lambda) {
 }
 
 /**
- * Calculate Form multiplier based on 5-match sequence
- * @param {Array<string>} formArray Array of 'W', 'D', 'L'
+ * EMA Momentum (Media Móvil Exponencial) para los últimos 3 partidos
  */
-function calculateFormMultiplier(formArray = []) {
+function calculateEMAMomentum(formArray = []) {
   if (!formArray || formArray.length === 0) return 1.0;
   
-  const weights = [0.35, 0.25, 0.20, 0.12, 0.08];
-  let points = 0;
+  // Pesos exponenciales para los últimos 3 partidos (índices 0, 1, 2)
+  const weights = [0.50, 0.30, 0.20]; 
+  let emaPoints = 0;
   let totalWeight = 0;
 
-  formArray.slice(0, 5).forEach((result, idx) => {
-    const w = weights[idx] || 0.1;
+  // Tomamos solo los últimos 3 resultados
+  formArray.slice(0, 3).forEach((result, idx) => {
+    const w = weights[idx];
     totalWeight += w;
-    if (result === 'W') points += 3 * w;
-    else if (result === 'D') points += 1 * w;
+    if (result === 'W') emaPoints += 3 * w;
+    else if (result === 'D') emaPoints += 1 * w;
   });
 
   const maxPoints = 3 * totalWeight;
-  const ratio = points / maxPoints;
-  return 0.82 + ratio * 0.36;
+  const ratio = emaPoints / maxPoints; // 0.0 a 1.0
+  
+  // Transformamos el ratio a un multiplicador entre 0.85 y 1.25
+  return 0.85 + (ratio * 0.40); 
+}
+
+/**
+ * Penalización por Fatiga basada en días de descanso
+ */
+function calculateFatiguePenalty(lastMatchDateStr) {
+  if (!lastMatchDateStr) return 1.0;
+  
+  const lastMatch = new Date(lastMatchDateStr);
+  const today = new Date();
+  
+  const diffTime = Math.abs(today - lastMatch);
+  const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
+  
+  if (diffDays < 4) {
+    return 0.90; // Penalización del 10%
+  }
+  return 1.0;
+}
+
+/**
+ * Power Index (Elo-style Rating)
+ * Convierte la posición en tabla a un índice de fuerza entre 0 y 100.
+ * Equipos en zona Champions (top 4) reciben un boost extra.
+ * Equipos en zona descenso (bottom 3) reciben penalización extra.
+ * La diferencia normalizada entre dos Power Index se usa para
+ * ajustar el xG antes del Monte Carlo.
+ */
+function calculatePowerIndex(position, totalTeams = 20) {
+  // Rating base: lineal invertido (pos 1 = 100, pos 20 = 5)
+  const baseRating = 100 - ((position - 1) / (totalTeams - 1)) * 95;
+  
+  // Boost Champions Zone (top 4): +8 puntos
+  const championsBoost = position <= 4 ? 8 : 0;
+  
+  // Boost Europa League zone (5-7): +3 puntos
+  const europaBoost = (position >= 5 && position <= 7) ? 3 : 0;
+  
+  // Penalización zona descenso (bottom 3): -5 puntos
+  const relegationPenalty = position >= (totalTeams - 2) ? -5 : 0;
+  
+  return Math.max(5, Math.min(100, baseRating + championsBoost + europaBoost + relegationPenalty));
+}
+
+/**
+ * Calcula el ajuste de xG basado en la diferencia de Power Index.
+ * Si el equipo tiene un PI mucho mayor que su rival, su xG sube.
+ * Si es mucho menor, su xG baja. El efecto está acotado a ±15%.
+ * @param {number} teamPI - Power Index del equipo
+ * @param {number} rivalPI - Power Index del rival
+ * @returns {number} Multiplicador entre 0.85 y 1.15
+ */
+function calculatePowerDifferential(teamPI, rivalPI) {
+  const diff = teamPI - rivalPI; // Rango: -95 a +95
+  // Normalizar a ±0.15 (máximo 15% de ajuste)
+  const adjustment = (diff / 95) * 0.15;
+  return 1.0 + adjustment; // Rango: 0.85 a 1.15
 }
 
 /**
@@ -151,8 +211,13 @@ export function calculateMatchPrediction(homeStats, awayStats, h2hHistory = []) 
   const leagueAvgGoals = 1.38;
   const homeAdvantage = 1.14;
 
-  const homeFormMultiplier = calculateFormMultiplier(homeStats.form);
-  const awayFormMultiplier = calculateFormMultiplier(awayStats.form);
+  // EMA Momentum
+  const homeFormMultiplier = calculateEMAMomentum(homeStats.form);
+  const awayFormMultiplier = calculateEMAMomentum(awayStats.form);
+
+  // Penalización por fatiga
+  const homeFatigue = calculateFatiguePenalty(homeStats.lastMatchDate);
+  const awayFatigue = calculateFatiguePenalty(awayStats.lastMatchDate);
 
   // ==============================================================
   // 1. SUAVIZADO DE LAPLACE (Regresión a la Media)
@@ -168,10 +233,11 @@ export function calculateMatchPrediction(homeStats, awayStats, h2hHistory = []) 
   const smoothedAwayGF = awayStats.goalsFor + (leagueAvgGoals * smoothingMatches);
   const smoothedAwayGA = awayStats.goalsAgainst + (leagueAvgGoals * smoothingMatches);
 
-  const homeAttack = ((smoothedHomeGF / smoothedHomePlayed) / leagueAvgGoals) * homeFormMultiplier;
+  // Aplicamos EMA Momentum y Fatiga a la fuerza ofensiva
+  const homeAttack = ((smoothedHomeGF / smoothedHomePlayed) / leagueAvgGoals) * homeFormMultiplier * homeFatigue;
   const homeDefense = ((smoothedHomeGA / smoothedHomePlayed) / leagueAvgGoals);
 
-  const awayAttack = ((smoothedAwayGF / smoothedAwayPlayed) / leagueAvgGoals) * awayFormMultiplier;
+  const awayAttack = ((smoothedAwayGF / smoothedAwayPlayed) / leagueAvgGoals) * awayFormMultiplier * awayFatigue;
   const awayDefense = ((smoothedAwayGA / smoothedAwayPlayed) / leagueAvgGoals);
 
   let base_xG_Home = homeAttack * awayDefense * leagueAvgGoals * homeAdvantage;
@@ -218,12 +284,22 @@ export function calculateMatchPrediction(homeStats, awayStats, h2hHistory = []) 
     base_xG_Away = (base_xG_Away * formWeight) + (avgH2H_Away * h2hWeight);
   }
 
+  // ==============================================================
+  // 3. POWER INDEX (ELO-STYLE) ADJUSTMENT
+  // Ajustamos el xG según la jerarquía relativa de los equipos
+  // ==============================================================
+  const homePI = calculatePowerIndex(homeStats.position, 20);
+  const awayPI = calculatePowerIndex(awayStats.position, 20);
+  
+  base_xG_Home *= calculatePowerDifferential(homePI, awayPI);
+  base_xG_Away *= calculatePowerDifferential(awayPI, homePI);
+
   // Pisos estadísticos
   let xG_Home = Math.max(0.35, base_xG_Home);
   let xG_Away = Math.max(0.25, base_xG_Away);
 
   // ==============================================================
-  // 3. LÍMITE DE CONFIANZA (CLIPPING)
+  // 4. LÍMITE DE CONFIANZA (CLIPPING)
   // Evitar xG irreales (ej. > 3.0) si la muestra de la temporada es pequeña (<10)
   // ==============================================================
   const maxSafe_xG = homeStats.played >= 10 ? 4.5 : 3.0;
@@ -274,37 +350,77 @@ export function calculateMatchPrediction(homeStats, awayStats, h2hHistory = []) 
   const pctBTTS = Math.round(probBTTS * 100);
 
   // ==============================================================
-  // 4. AJUSTE DEL VALUE BET
-  // Regresamos cuotas extremas a un límite conservador (máximo 70% prob) en jornadas tempranas
+  // 4. TOP PICKS ENGINE Y CUOTAS JUSTAS
   // ==============================================================
+  
+  // A. Cálculo de Cuotas Justas (Fair Odds) = 100 / Probabilidad
+  const fairOdds = {
+    homeWin: Number((100 / Math.max(pctHomeWin, 1)).toFixed(2)),
+    draw: Number((100 / Math.max(pctDraw, 1)).toFixed(2)),
+    awayWin: Number((100 / Math.max(pctAwayWin, 1)).toFixed(2)),
+    over25: Number((100 / Math.max(pctOver25, 1)).toFixed(2)),
+    under25: Number((100 / Math.max(100 - pctOver25, 1)).toFixed(2)),
+    bttsYes: Number((100 / Math.max(pctBTTS, 1)).toFixed(2)),
+    bttsNo: Number((100 / Math.max(100 - pctBTTS, 1)).toFixed(2))
+  };
+
+  // B. Generación de Top Predictions
+  const topPredictions = [];
+
   let displayHomeWin = pctHomeWin;
   let displayAwayWin = pctAwayWin;
-  
   if (homeStats.played < 5) {
-     displayHomeWin = Math.min(pctHomeWin, 70); // Tope 70% (Cuota min @1.42)
+     displayHomeWin = Math.min(pctHomeWin, 70); // Tope 70% conservador
      displayAwayWin = Math.min(pctAwayWin, 70);
   }
 
-  let recommendation = 'Partido Equilibrado - Sin Apuesta de Alto Valor';
-  let valueBetType = 'NONE';
-  let recommendedOdds = '1.85';
-
+  // Mercado 1X2
   if (displayHomeWin >= 60) {
-    recommendation = `Victoria Local (${homeStats.name}) con Alta Probabilidad`;
-    valueBetType = 'HOME_WIN';
-    recommendedOdds = (100 / displayHomeWin).toFixed(2);
+    topPredictions.push({ 
+      type: 'HOME_WIN', 
+      label: `Victoria Local (${homeStats.name})`, 
+      probability: displayHomeWin, 
+      fairOdds: fairOdds.homeWin, 
+      evThreshold: 'EV+' 
+    });
   } else if (displayAwayWin >= 55) {
-    recommendation = `Victoria Visitante (${awayStats.name}) con Valor Estadístico`;
-    valueBetType = 'AWAY_WIN';
-    recommendedOdds = (100 / displayAwayWin).toFixed(2);
-  } else if (pctOver25 >= 68) {
-    recommendation = `Más de 2.5 Goles en el Partido (xG Combinado: ${(xG_Home + xG_Away).toFixed(2)})`;
-    valueBetType = 'OVER_25';
-    recommendedOdds = (100 / pctOver25).toFixed(2);
-  } else if (pctBTTS >= 65) {
-    recommendation = 'Ambos Equipos Anotan (BTTS Si)';
-    valueBetType = 'BTTS';
-    recommendedOdds = (100 / pctBTTS).toFixed(2);
+    topPredictions.push({ 
+      type: 'AWAY_WIN', 
+      label: `Victoria Visitante (${awayStats.name})`, 
+      probability: displayAwayWin, 
+      fairOdds: fairOdds.awayWin, 
+      evThreshold: 'EV+' 
+    });
+  }
+
+  // Mercado Goles
+  if (pctOver25 >= 68) {
+    topPredictions.push({ 
+      type: 'OVER_25', 
+      label: 'Más de 2.5 Goles', 
+      probability: pctOver25, 
+      fairOdds: fairOdds.over25, 
+      evThreshold: 'EV+' 
+    });
+  } else if ((100 - pctOver25) >= 65) {
+    topPredictions.push({ 
+      type: 'UNDER_25', 
+      label: 'Menos de 2.5 Goles', 
+      probability: 100 - pctOver25, 
+      fairOdds: fairOdds.under25, 
+      evThreshold: 'Neutral' 
+    });
+  }
+
+  // Mercado BTTS
+  if (pctBTTS >= 65) {
+    topPredictions.push({ 
+      type: 'BTTS_YES', 
+      label: 'Ambos Anotan (Sí)', 
+      probability: pctBTTS, 
+      fairOdds: fairOdds.bttsYes, 
+      evThreshold: 'EV+' 
+    });
   }
 
   const confidenceScore = Math.min(95, Math.max(62, Math.round(50 + Math.abs(pctHomeWin - pctAwayWin) * 0.5 + (h2hHistory.length * 3))));
@@ -314,7 +430,7 @@ export function calculateMatchPrediction(homeStats, awayStats, h2hHistory = []) 
 
   return {
     probabilities: {
-      homeWin: pctHomeWin, // Mandamos la real a los gráficos
+      homeWin: pctHomeWin, 
       draw: pctDraw,
       awayWin: pctAwayWin,
     },
@@ -331,9 +447,8 @@ export function calculateMatchPrediction(homeStats, awayStats, h2hHistory = []) 
     mostLikelyScore: `${mostLikelyScore.home} - ${mostLikelyScore.away}`,
     mostLikelyScoreProb: Math.round(maxScoreProb * 100),
     confidenceScore,
-    recommendation,
-    valueBetType,
-    recommendedOdds,
+    fairOdds,
+    topPredictions,
     monteCarlo,
     calculatedAt: new Date().toISOString(),
   };
