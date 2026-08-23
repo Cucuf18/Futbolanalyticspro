@@ -520,6 +520,8 @@ export function calculateMatchPrediction(homeStats, awayStats, h2hHistory = []) 
   const confidenceScore = Math.min(95, Math.max(62, Math.round(50 + Math.abs(pctHomeWin - pctAwayWin) * 0.5 + (h2hHistory.length * 3))));
 
   // Correr Monte Carlo con la nueva data ajustada
+  const monteCarlo = runMonteCarloSimulation(xG_Home, xG_Away, homeStrength, awayStrength, 10000);
+
   // Calcular Hándicap Asiático
   const asianHandicap = calculateAsianHandicap(xG_Home, xG_Away);
 

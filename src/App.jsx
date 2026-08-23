@@ -133,6 +133,34 @@ function StandingsView() {
   );
 }
 
+function PredictorRedirect() {
+  const { routeLeagueId } = useParams();
+  const navigate = useNavigate();
+  
+  useEffect(() => {
+    async function fetchTeams() {
+      try {
+        const res = await fetch(`/api/standings/${routeLeagueId}`);
+        const result = await res.json();
+        if (result.success && result.data.teams && result.data.teams.length >= 2) {
+          navigate(`/predict/${routeLeagueId}/${result.data.teams[0].id}/${result.data.teams[1].id}`, { replace: true });
+        } else {
+          navigate(`/standings/${routeLeagueId}`, { replace: true });
+        }
+      } catch (err) {
+        navigate(`/standings/${routeLeagueId}`, { replace: true });
+      }
+    }
+    fetchTeams();
+  }, [routeLeagueId, navigate]);
+
+  return (
+    <div style={{ textAlign: 'center', padding: '60px 20px', color: 'var(--text-secondary)' }}>
+      Cargando liga...
+    </div>
+  );
+}
+
 function AppLayout() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -149,11 +177,8 @@ function AppLayout() {
   const [isPremiumModalOpen, setIsPremiumModalOpen] = useState(false);
 
   const handleSelectLeague = (id) => {
-    if (location.pathname.startsWith('/standings')) {
-      navigate(`/standings/${id}`);
-    } else if (location.pathname.startsWith('/predict') && homeId && awayId) {
-      // Need to fetch teams for new league to prevent invalid IDs, simpler to route to standings
-      navigate(`/standings/${id}`);
+    if (location.pathname.startsWith('/predict')) {
+      navigate(`/predict/${id}`);
     } else {
       navigate(`/standings/${id}`);
     }
@@ -184,6 +209,7 @@ function AppLayout() {
             <Route path="/" element={<StandingsView />} />
             <Route path="/standings" element={<StandingsView />} />
             <Route path="/standings/:routeLeagueId" element={<StandingsView />} />
+            <Route path="/predict/:routeLeagueId" element={<PredictorRedirect />} />
             <Route path="/predict/:routeLeagueId/:homeId/:awayId" element={<PredictorView isPremium={isPremium} onOpenPremiumModal={() => setIsPremiumModalOpen(true)} />} />
             <Route path="/tracker" element={<HistoryTracker />} />
           </Routes>

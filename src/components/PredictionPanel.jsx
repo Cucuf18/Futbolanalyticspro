@@ -9,8 +9,18 @@ export default function PredictionPanel({ predictionData, isPremium, onOpenPremi
   
   if (!predictionData || !predictionData.prediction) return null;
 
-  const { matchInfo, prediction } = predictionData;
-  const { probabilities, expectedGoals, probabilitiesSecondary, mostLikelyScore, fairOdds, topPredictions, confidenceScore, starPick } = prediction;
+  const { matchInfo, h2h, prediction } = predictionData;
+
+  const { 
+    probabilities = {}, 
+    expectedGoals = {}, 
+    probabilitiesSecondary = {}, 
+    mostLikelyScore = 'N/A', 
+    fairOdds = {}, 
+    topPredictions = [], 
+    confidenceScore = 0, 
+    starPick = null 
+  } = prediction || {};
 
   // Match Summary stats from Monte Carlo
   const summary = prediction.monteCarlo?.matchSummary;
@@ -117,10 +127,10 @@ export default function PredictionPanel({ predictionData, isPremium, onOpenPremi
                 border: '1px solid var(--glass-border)', textAlign: 'center',
               }}>
                 <div style={{ fontSize: '22px', marginBottom: '6px' }}>⚽</div>
-                <div style={{ fontSize: '22px', fontWeight: 800, color: 'var(--accent-green)' }}>{summary.avgTotalGoals}</div>
+                <div style={{ fontSize: '22px', fontWeight: 800, color: 'var(--accent-green)' }}>{summary?.avgTotalGoals ?? 'N/A'}</div>
                 <div style={{ fontSize: '10px', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.03em', marginTop: '4px' }}>Media de Goles</div>
                 <div style={{ fontSize: '10px', color: 'var(--text-secondary)', marginTop: '2px' }}>
-                  {summary.avgHomeGoals} - {summary.avgAwayGoals}
+                  {summary?.avgHomeGoals ?? '0'} - {summary?.avgAwayGoals ?? '0'}
                 </div>
               </div>
 
@@ -130,10 +140,10 @@ export default function PredictionPanel({ predictionData, isPremium, onOpenPremi
                 border: '1px solid var(--glass-border)', textAlign: 'center',
               }}>
                 <div style={{ fontSize: '22px', marginBottom: '6px' }}>🎯</div>
-                <div style={{ fontSize: '22px', fontWeight: 800, color: summary.bttsPct > 42 ? 'var(--accent-green)' : 'var(--accent-red)' }}>{summary.bttsPct}%</div>
+                <div style={{ fontSize: '22px', fontWeight: 800, color: (summary?.bttsPct ?? 0) > 42 ? 'var(--accent-green)' : 'var(--accent-red)' }}>{summary?.bttsPct ?? 'N/A'}%</div>
                 <div style={{ fontSize: '10px', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.03em', marginTop: '4px' }}>Ambos Anotan</div>
                 <div style={{ fontSize: '10px', color: 'var(--text-secondary)', marginTop: '2px' }}>
-                  {summary.bttsPct > 42 ? 'Competitivo' : 'Poco probable'}
+                  {(summary?.bttsPct ?? 0) > 42 ? 'Competitivo' : 'Poco probable'}
                 </div>
               </div>
 
@@ -143,7 +153,7 @@ export default function PredictionPanel({ predictionData, isPremium, onOpenPremi
                 border: '1px solid var(--glass-border)', textAlign: 'center',
               }}>
                 <div style={{ fontSize: '22px', marginBottom: '6px' }}>🟨</div>
-                <div style={{ fontSize: '22px', fontWeight: 800, color: '#ffd700' }}>{summary.avgYellowCards}</div>
+                <div style={{ fontSize: '22px', fontWeight: 800, color: '#ffd700' }}>{summary?.avgYellowCards ?? 'N/A'}</div>
                 <div style={{ fontSize: '10px', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.03em', marginTop: '4px' }}>Tarjetas Amarillas</div>
                 <div style={{ fontSize: '10px', color: 'var(--text-secondary)', marginTop: '2px' }}>
                   Media por partido
@@ -156,7 +166,7 @@ export default function PredictionPanel({ predictionData, isPremium, onOpenPremi
                 border: '1px solid var(--glass-border)', textAlign: 'center',
               }}>
                 <div style={{ fontSize: '22px', marginBottom: '6px' }}>🚩</div>
-                <div style={{ fontSize: '22px', fontWeight: 800, color: 'var(--accent-purple)' }}>{summary.avgOffsides}</div>
+                <div style={{ fontSize: '22px', fontWeight: 800, color: 'var(--accent-purple)' }}>{summary?.avgOffsides ?? 'N/A'}</div>
                 <div style={{ fontSize: '10px', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.03em', marginTop: '4px' }}>Fueras de Juego</div>
                 <div style={{ fontSize: '10px', color: 'var(--text-secondary)', marginTop: '2px' }}>
                   Media por partido
@@ -169,7 +179,7 @@ export default function PredictionPanel({ predictionData, isPremium, onOpenPremi
                 border: '1px solid var(--glass-border)', textAlign: 'center',
               }}>
                 <div style={{ fontSize: '22px', marginBottom: '6px' }}>🥅</div>
-                <div style={{ fontSize: '22px', fontWeight: 800, color: 'var(--accent-cyan)' }}>{summary.avgShotsOnTarget}</div>
+                <div style={{ fontSize: '22px', fontWeight: 800, color: 'var(--accent-cyan)' }}>{summary?.avgShotsOnTarget ?? 'N/A'}</div>
                 <div style={{ fontSize: '10px', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.03em', marginTop: '4px' }}>Tiros a Puerta</div>
                 <div style={{ fontSize: '10px', color: 'var(--text-secondary)', marginTop: '2px' }}>
                   Combinados
@@ -182,7 +192,7 @@ export default function PredictionPanel({ predictionData, isPremium, onOpenPremi
                 border: '1px solid var(--glass-border)', textAlign: 'center',
               }}>
                 <div style={{ fontSize: '22px', marginBottom: '6px' }}>📐</div>
-                <div style={{ fontSize: '22px', fontWeight: 800, color: 'var(--accent-gold)' }}>{summary.avgCorners}</div>
+                <div style={{ fontSize: '22px', fontWeight: 800, color: 'var(--accent-gold)' }}>{summary?.avgCorners ?? 'N/A'}</div>
                 <div style={{ fontSize: '10px', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.03em', marginTop: '4px' }}>Córners</div>
                 <div style={{ fontSize: '10px', color: 'var(--text-secondary)', marginTop: '2px' }}>
                   Combinados
@@ -200,20 +210,20 @@ export default function PredictionPanel({ predictionData, isPremium, onOpenPremi
           
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px', textAlign: 'center', marginBottom: '12px' }}>
             <div style={{ background: 'rgba(0, 242, 254, 0.08)', padding: '12px', borderRadius: '12px', border: '1px solid rgba(0, 242, 254, 0.2)' }}>
-              <div style={{ fontSize: '12px', color: 'var(--accent-cyan)', fontWeight: 600 }}>{matchInfo.homeTeam.shortName}</div>
-              <div style={{ fontSize: '28px', fontWeight: 800, color: 'var(--accent-cyan)' }}>{probabilities.homeWin}%</div>
+              <div style={{ fontSize: '12px', color: 'var(--accent-cyan)', fontWeight: 600 }}>{matchInfo?.homeTeam?.shortName ?? 'Local'}</div>
+              <div style={{ fontSize: '28px', fontWeight: 800, color: 'var(--accent-cyan)' }}>{probabilities?.homeWin ?? 'N/A'}%</div>
               <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Victoria Local</div>
             </div>
 
             <div style={{ background: 'rgba(255, 170, 0, 0.08)', padding: '12px', borderRadius: '12px', border: '1px solid rgba(255, 170, 0, 0.2)' }}>
               <div style={{ fontSize: '12px', color: 'var(--accent-gold)', fontWeight: 600 }}>Empate</div>
-              <div style={{ fontSize: '28px', fontWeight: 800, color: 'var(--accent-gold)' }}>{probabilities.draw}%</div>
+              <div style={{ fontSize: '28px', fontWeight: 800, color: 'var(--accent-gold)' }}>{probabilities?.draw ?? 'N/A'}%</div>
               <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Tablas</div>
             </div>
 
             <div style={{ background: 'rgba(255, 61, 113, 0.08)', padding: '12px', borderRadius: '12px', border: '1px solid rgba(255, 61, 113, 0.2)' }}>
-              <div style={{ fontSize: '12px', color: 'var(--accent-red)', fontWeight: 600 }}>{matchInfo.awayTeam.shortName}</div>
-              <div style={{ fontSize: '28px', fontWeight: 800, color: 'var(--accent-red)' }}>{probabilities.awayWin}%</div>
+              <div style={{ fontSize: '12px', color: 'var(--accent-red)', fontWeight: 600 }}>{matchInfo?.awayTeam?.shortName ?? 'Visita'}</div>
+              <div style={{ fontSize: '28px', fontWeight: 800, color: 'var(--accent-red)' }}>{probabilities?.awayWin ?? 'N/A'}%</div>
               <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Victoria Visitante</div>
             </div>
           </div>
@@ -228,30 +238,30 @@ export default function PredictionPanel({ predictionData, isPremium, onOpenPremi
           <div style={{ background: 'rgba(15, 22, 41, 0.7)', padding: '14px', borderRadius: '14px', border: '1px solid var(--glass-border)' }}>
             <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Goles Esperados (xG)</div>
             <div style={{ fontSize: '20px', fontWeight: 800, color: 'var(--accent-purple)' }}>
-              {expectedGoals.home} – {expectedGoals.away}
+              {expectedGoals?.home ?? 'N/A'} – {expectedGoals?.away ?? 'N/A'}
             </div>
             <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '4px' }}>
-              Total: {expectedGoals.total} goles
+              Total: {expectedGoals?.total ?? '0'} goles
             </div>
           </div>
 
           <div style={{ background: 'rgba(15, 22, 41, 0.7)', padding: '14px', borderRadius: '14px', border: '1px solid var(--glass-border)' }}>
             <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Linea +2.5 Goles</div>
             <div style={{ fontSize: '20px', fontWeight: 800, color: 'var(--accent-green)' }}>
-              {probabilitiesSecondary.over25}%
+              {probabilitiesSecondary?.over25 ?? 'N/A'}%
             </div>
             <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '4px' }}>
-              BTTS: {probabilitiesSecondary.btts}%
+              BTTS: {probabilitiesSecondary?.btts ?? 'N/A'}%
             </div>
           </div>
 
           <div style={{ background: 'rgba(15, 22, 41, 0.7)', padding: '14px', borderRadius: '14px', border: '1px solid var(--glass-border)' }}>
             <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Marcador Probable</div>
             <div style={{ fontSize: '20px', fontWeight: 800, color: 'var(--accent-gold)' }}>
-              {mostLikelyScore}
+              {mostLikelyScore ?? 'N/A'}
             </div>
             <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '4px' }}>
-              Confianza: {confidenceScore}%
+              Confianza: {confidenceScore ?? 'N/A'}%
             </div>
           </div>
         </div>
@@ -358,21 +368,21 @@ export default function PredictionPanel({ predictionData, isPremium, onOpenPremi
                 <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginBottom: '12px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Distribución de Resultados</div>
                 
                 <div style={{ display: 'flex', height: '24px', borderRadius: '12px', overflow: 'hidden', marginBottom: '12px', boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.2)' }}>
-                  <div style={{ width: `${prediction.monteCarlo.results.homeWinPct}%`, background: 'var(--accent-cyan)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: 700, color: '#000', transition: 'width 1s ease-out' }}>
-                    {prediction.monteCarlo.results.homeWinPct > 10 ? `${prediction.monteCarlo.results.homeWinPct}%` : ''}
+                  <div style={{ width: `${prediction.monteCarlo?.results?.homeWinPct ?? 0}%`, background: 'var(--accent-cyan)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: 700, color: '#000', transition: 'width 1s ease-out' }}>
+                    {(prediction.monteCarlo?.results?.homeWinPct ?? 0) > 10 ? `${prediction.monteCarlo?.results?.homeWinPct}%` : ''}
                   </div>
-                  <div style={{ width: `${prediction.monteCarlo.results.drawPct}%`, background: 'var(--accent-gold)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: 700, color: '#000', transition: 'width 1s ease-out' }}>
-                    {prediction.monteCarlo.results.drawPct > 10 ? `${prediction.monteCarlo.results.drawPct}%` : ''}
+                  <div style={{ width: `${prediction.monteCarlo?.results?.drawPct ?? 0}%`, background: 'var(--accent-gold)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: 700, color: '#000', transition: 'width 1s ease-out' }}>
+                    {(prediction.monteCarlo?.results?.drawPct ?? 0) > 10 ? `${prediction.monteCarlo?.results?.drawPct}%` : ''}
                   </div>
-                  <div style={{ width: `${prediction.monteCarlo.results.awayWinPct}%`, background: 'var(--accent-red)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: 700, color: '#000', transition: 'width 1s ease-out' }}>
-                    {prediction.monteCarlo.results.awayWinPct > 10 ? `${prediction.monteCarlo.results.awayWinPct}%` : ''}
+                  <div style={{ width: `${prediction.monteCarlo?.results?.awayWinPct ?? 0}%`, background: 'var(--accent-red)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: 700, color: '#000', transition: 'width 1s ease-out' }}>
+                    {(prediction.monteCarlo?.results?.awayWinPct ?? 0) > 10 ? `${prediction.monteCarlo?.results?.awayWinPct}%` : ''}
                   </div>
                 </div>
                 
                 <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '12px' }}>
-                  <div style={{ color: 'var(--accent-cyan)' }}><span style={{ fontWeight: 700 }}>{prediction.monteCarlo.results.homeWins}</span> V. Local</div>
-                  <div style={{ color: 'var(--accent-gold)' }}><span style={{ fontWeight: 700 }}>{prediction.monteCarlo.results.draws}</span> Empates</div>
-                  <div style={{ color: 'var(--accent-red)' }}><span style={{ fontWeight: 700 }}>{prediction.monteCarlo.results.awayWins}</span> V. Vis.</div>
+                  <div style={{ color: 'var(--accent-cyan)' }}><span style={{ fontWeight: 700 }}>{prediction.monteCarlo?.results?.homeWins ?? '0'}</span> V. Local</div>
+                  <div style={{ color: 'var(--accent-gold)' }}><span style={{ fontWeight: 700 }}>{prediction.monteCarlo?.results?.draws ?? '0'}</span> Empates</div>
+                  <div style={{ color: 'var(--accent-red)' }}><span style={{ fontWeight: 700 }}>{prediction.monteCarlo?.results?.awayWins ?? '0'}</span> V. Vis.</div>
                 </div>
               </div>
 
@@ -380,14 +390,14 @@ export default function PredictionPanel({ predictionData, isPremium, onOpenPremi
               <div style={{ background: 'rgba(15, 22, 41, 0.7)', padding: '16px', borderRadius: '14px', border: '1px solid var(--glass-border)' }}>
                 <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginBottom: '12px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Marcadores Frecuentes</div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                  {prediction.monteCarlo.topScores.map((scoreObj, idx) => (
+                  {prediction.monteCarlo?.topScores?.map((scoreObj, idx) => (
                     <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 10px', background: 'rgba(255,255,255,0.03)', borderRadius: '8px', border: idx === 0 ? '1px solid rgba(255,170,0,0.3)' : '1px solid transparent' }}>
                       <div style={{ fontSize: '15px', fontWeight: 800, color: idx === 0 ? 'var(--accent-gold)' : 'var(--text-primary)' }}>{scoreObj.score}</div>
                       <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
                         <span style={{ fontWeight: 700, color: idx === 0 ? 'var(--accent-gold)' : 'inherit' }}>{scoreObj.percentage}%</span> de probabilidad
                       </div>
                     </div>
-                  ))}
+                  )) ?? <div style={{ fontSize: '12px', color: 'var(--text-muted)', textAlign: 'center' }}>No hay datos</div>}
                 </div>
               </div>
             </div>
