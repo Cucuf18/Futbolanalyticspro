@@ -35,7 +35,7 @@ export default function PredictionPanel({ predictionData, isPremium, onOpenPremi
       matchId: `${matchInfo.homeTeam.id}-${matchInfo.awayTeam.id}-${pick.type}`,
       homeTeam: matchInfo.homeTeam.shortName,
       awayTeam: matchInfo.awayTeam.shortName,
-      valueBetType: pick.type,
+      valueBetType: pick.label,
       probability: pick.probability,
       odds: cuotaMercado || pick.fairOdds
     });

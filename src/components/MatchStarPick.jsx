@@ -13,7 +13,7 @@ export default function MatchStarPick({ starPick, matchInfo }) {
       matchId: `${matchInfo.homeTeam.id}-${matchInfo.awayTeam.id}-${starPick.type}`,
       homeTeam: matchInfo.homeTeam.shortName,
       awayTeam: matchInfo.awayTeam.shortName,
-      valueBetType: starPick.type,
+      valueBetType: starPick.label,
       probability: starPick.probability,
       odds: starPick.fairOdds // Using fair odds as placeholder if market odds not available
     });
