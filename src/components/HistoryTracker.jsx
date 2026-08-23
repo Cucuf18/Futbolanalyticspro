@@ -14,12 +14,6 @@ export default function HistoryTracker() {
 
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
-      <Navbar 
-        isPremium={false} 
-        onTogglePremium={() => {}} 
-        onOpenPremiumModal={() => {}} 
-        dataSource="live" 
-      />
       
       <main style={{ maxWidth: '800px', width: '100%', margin: '0 auto', padding: '40px 16px', flex: 1 }}>
         

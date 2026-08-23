@@ -87,6 +87,9 @@ function StandingsView() {
   
   const [standingsData, setStandingsData] = useState(null);
   const [loading, setLoading] = useState(true);
+  
+  const [localHomeId, setLocalHomeId] = useState(null);
+  const [localAwayId, setLocalAwayId] = useState(null);
 
   useEffect(() => {
     async function loadStandings() {
@@ -96,6 +99,9 @@ function StandingsView() {
         const result = await res.json();
         if (result.success) {
           setStandingsData(result.data);
+          // Reset local selections when league changes
+          setLocalHomeId(null);
+          setLocalAwayId(null);
         }
       } catch (err) {
         console.error('Error loading standings:', err);
@@ -107,29 +113,59 @@ function StandingsView() {
   }, [selectedLeague]);
 
   const handleSelectHomeTeam = (id) => {
-    const teams = standingsData?.teams || [];
-    const firstOther = teams.find(t => t.id !== id)?.id || id;
-    navigate(`/predict/${selectedLeague}/${id}/${firstOther}`);
+    if (localAwayId === id) setLocalAwayId(null);
+    setLocalHomeId(id);
   };
 
   const handleSelectAwayTeam = (id) => {
-    const teams = standingsData?.teams || [];
-    const firstOther = teams.find(t => t.id !== id)?.id || id;
-    navigate(`/predict/${selectedLeague}/${firstOther}/${id}`);
+    if (localHomeId === id) setLocalHomeId(null);
+    setLocalAwayId(id);
+  };
+  
+  const handlePredict = () => {
+    if (localHomeId && localAwayId) {
+      navigate(`/predict/${selectedLeague}/${localHomeId}/${localAwayId}`);
+    }
   };
 
   if (loading || !standingsData) {
     return <div style={{ textAlign: 'center', padding: '60px 20px' }}>Cargando posiciones...</div>;
   }
 
+  const getTeamName = (id) => {
+    return standingsData.teams.find(t => t.id === id)?.shortName || '';
+  };
+
   return (
-    <MetricsTable
-      standings={standingsData}
-      homeTeamId={null}
-      awayTeamId={null}
-      onSelectHomeTeam={handleSelectHomeTeam}
-      onSelectAwayTeam={handleSelectAwayTeam}
-    />
+    <div style={{ position: 'relative', paddingBottom: (localHomeId && localAwayId) ? '80px' : '0' }}>
+      <MetricsTable
+        standings={standingsData}
+        homeTeamId={localHomeId}
+        awayTeamId={localAwayId}
+        onSelectHomeTeam={handleSelectHomeTeam}
+        onSelectAwayTeam={handleSelectAwayTeam}
+      />
+      
+      {localHomeId && localAwayId && (
+        <div style={{ 
+          position: 'fixed', bottom: '40px', left: '50%', transform: 'translateX(-50%)', 
+          zIndex: 100, animation: 'fade-in 0.3s ease-out' 
+        }}>
+          <button 
+            onClick={handlePredict} 
+            style={{ 
+              background: 'linear-gradient(135deg, #00f2fe 0%, #4facfe 100%)', 
+              color: '#080c16', padding: '16px 32px', borderRadius: '30px', 
+              fontWeight: 800, fontSize: '16px', boxShadow: '0 10px 30px rgba(0, 242, 254, 0.4)', 
+              cursor: 'pointer', border: 'none', display: 'flex', alignItems: 'center', gap: '12px'
+            }}
+          >
+            <span>🚀</span>
+            Analizar {getTeamName(localHomeId)} vs {getTeamName(localAwayId)}
+          </button>
+        </div>
+      )}
+    </div>
   );
 }
 
