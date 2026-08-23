@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { BrowserRouter, Routes, Route, useParams, useNavigate } from 'react-router-dom';
+import { BrowserRouter, Routes, Route, useParams, useNavigate, useLocation } from 'react-router-dom';
 import Navbar from './components/Navbar';
 import LeagueSelector from './components/LeagueSelector';
 import MetricsTable from './components/MetricsTable';
@@ -9,6 +9,7 @@ import AdBanner from './components/AdBanner';
 import PremiumModal from './components/PremiumModal';
 import { BetSlipProvider } from './context/BetSlipContext';
 import BetSlip from './components/BetSlip';
+import HistoryTracker from './components/HistoryTracker';
 
 const LEAGUES = [
   { id: 'PL', name: 'Premier League', country: 'Inglaterra', code: 'ENG' },
@@ -18,53 +19,19 @@ const LEAGUES = [
   { id: 'CL', name: 'Champions League', country: 'Europa', code: 'UCL' },
 ];
 
-function DashboardContent() {
+function PredictorView({ isPremium, onOpenPremiumModal }) {
   const { routeLeagueId, homeId, awayId } = useParams();
-  const navigate = useNavigate();
-  
   const selectedLeague = routeLeagueId || 'PL';
   
-  const [standingsData, setStandingsData] = useState(null);
   const [h2hData, setH2hData] = useState(null);
   const [predictionData, setPredictionData] = useState(null);
-  const [isPremium, setIsPremium] = useState(false);
-  const [isPremiumModalOpen, setIsPremiumModalOpen] = useState(false);
-  const [loading, setLoading] = useState(true);
-  const [dataSource, setDataSource] = useState('simulated');
+  const [loading, setLoading] = useState(false);
 
-  // Fetch standings when league changes
-  useEffect(() => {
-    async function loadStandings() {
-      setLoading(true);
-      try {
-        const res = await fetch(`/api/standings/${selectedLeague}`);
-        const result = await res.json();
-        if (result.success) {
-          setStandingsData(result.data);
-          setDataSource(result.data.dataSource || 'simulated');
-          const teams = result.data.teams || [];
-          
-          // Si no hay ids en la URL, auto-seleccionar los dos primeros y navegar
-          if (!homeId || !awayId) {
-            if (teams.length >= 2) {
-              navigate(`/predict/${selectedLeague}/${teams[0].id}/${teams[1].id}`, { replace: true });
-            }
-          }
-        }
-      } catch (err) {
-        console.error('Error loading standings:', err);
-      } finally {
-        setLoading(false);
-      }
-    }
-    loadStandings();
-  }, [selectedLeague, homeId, awayId, navigate]);
-
-  // Fetch H2H & prediction when teams change (basado en la URL)
   useEffect(() => {
     if (!homeId || !awayId || homeId === awayId) return;
 
     async function loadMatchDetails() {
+      setLoading(true);
       setH2hData(null);
       setPredictionData(null);
       try {
@@ -78,25 +45,118 @@ function DashboardContent() {
         if (predJson.success) setPredictionData(predJson.data);
       } catch (err) {
         console.error('Error loading match data:', err);
+      } finally {
+        setLoading(false);
       }
     }
     loadMatchDetails();
   }, [homeId, awayId, selectedLeague]);
 
-  const handleSelectLeague = (id) => {
-    navigate(`/predict/${id}`);
-  };
+  return (
+    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '32px' }}>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+        {loading ? (
+          <div style={{ textAlign: 'center', padding: '60px 20px', color: 'var(--text-secondary)' }}>
+            Cargando historial...
+          </div>
+        ) : (
+          <H2HViewer h2hData={h2hData} />
+        )}
+      </div>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
+        {loading ? (
+          <div style={{ textAlign: 'center', padding: '60px 20px', color: 'var(--text-secondary)' }}>
+            Ejecutando Simulaciones Monte Carlo...
+          </div>
+        ) : (
+          <PredictionPanel
+            predictionData={predictionData}
+            isPremium={isPremium}
+            onOpenPremiumModal={onOpenPremiumModal}
+          />
+        )}
+      </div>
+    </div>
+  );
+}
+
+function StandingsView() {
+  const { routeLeagueId } = useParams();
+  const navigate = useNavigate();
+  const selectedLeague = routeLeagueId || 'PL';
+  
+  const [standingsData, setStandingsData] = useState(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function loadStandings() {
+      setLoading(true);
+      try {
+        const res = await fetch(`/api/standings/${selectedLeague}`);
+        const result = await res.json();
+        if (result.success) {
+          setStandingsData(result.data);
+        }
+      } catch (err) {
+        console.error('Error loading standings:', err);
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadStandings();
+  }, [selectedLeague]);
 
   const handleSelectHomeTeam = (id) => {
-    let newAway = awayId;
-    if (id === awayId) newAway = homeId;
-    navigate(`/predict/${selectedLeague}/${id}/${newAway}`);
+    const teams = standingsData?.teams || [];
+    const firstOther = teams.find(t => t.id !== id)?.id || id;
+    navigate(`/predict/${selectedLeague}/${id}/${firstOther}`);
   };
 
   const handleSelectAwayTeam = (id) => {
-    let newHome = homeId;
-    if (id === homeId) newHome = awayId;
-    navigate(`/predict/${selectedLeague}/${newHome}/${id}`);
+    const teams = standingsData?.teams || [];
+    const firstOther = teams.find(t => t.id !== id)?.id || id;
+    navigate(`/predict/${selectedLeague}/${firstOther}/${id}`);
+  };
+
+  if (loading || !standingsData) {
+    return <div style={{ textAlign: 'center', padding: '60px 20px' }}>Cargando posiciones...</div>;
+  }
+
+  return (
+    <MetricsTable
+      standings={standingsData}
+      homeTeamId={null}
+      awayTeamId={null}
+      onSelectHomeTeam={handleSelectHomeTeam}
+      onSelectAwayTeam={handleSelectAwayTeam}
+    />
+  );
+}
+
+function AppLayout() {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const { routeLeagueId, homeId, awayId } = useParams();
+  
+  // Extraer liga actual de la URL
+  let currentLeague = 'PL';
+  const pathParts = location.pathname.split('/');
+  if (pathParts[2] && LEAGUES.some(l => l.id === pathParts[2])) {
+    currentLeague = pathParts[2];
+  }
+
+  const [isPremium, setIsPremium] = useState(false);
+  const [isPremiumModalOpen, setIsPremiumModalOpen] = useState(false);
+
+  const handleSelectLeague = (id) => {
+    if (location.pathname.startsWith('/standings')) {
+      navigate(`/standings/${id}`);
+    } else if (location.pathname.startsWith('/predict') && homeId && awayId) {
+      // Need to fetch teams for new league to prevent invalid IDs, simpler to route to standings
+      navigate(`/standings/${id}`);
+    } else {
+      navigate(`/standings/${id}`);
+    }
   };
 
   return (
@@ -105,59 +165,35 @@ function DashboardContent() {
         isPremium={isPremium}
         onTogglePremium={(status) => setIsPremium(status)}
         onOpenPremiumModal={() => setIsPremiumModalOpen(true)}
-        dataSource={dataSource}
+        dataSource={'live'}
       />
 
       <main style={{ maxWidth: '1280px', width: '100%', margin: '0 auto', padding: '24px 16px', flex: 1 }}>
         <div style={{ marginBottom: '20px' }}>
           <LeagueSelector
             leagues={LEAGUES}
-            selectedLeague={selectedLeague}
+            selectedLeague={currentLeague}
             onSelectLeague={handleSelectLeague}
           />
         </div>
 
         {!isPremium && <AdBanner slotId="top-header-ad" />}
 
-        {loading && (!standingsData) ? (
-          <div style={{ textAlign: 'center', padding: '60px 20px', color: 'var(--text-secondary)' }}>
-            <div style={{
-              width: '40px', height: '40px', borderRadius: '50%',
-              border: '3px solid var(--glass-border)',
-              borderTopColor: 'var(--accent-cyan)',
-              animation: 'spin 0.8s linear infinite',
-              margin: '0 auto 16px',
-            }} />
-            <p style={{ fontWeight: 600 }}>Cargando datos y modelo estadistico...</p>
-          </div>
-        ) : (
-          <div style={{ display: 'grid', gridTemplateColumns: '1fr', gap: '24px' }}>
-            <MetricsTable
-              standings={standingsData}
-              homeTeamId={Number(homeId)}
-              awayTeamId={Number(awayId)}
-              onSelectHomeTeam={handleSelectHomeTeam}
-              onSelectAwayTeam={handleSelectAwayTeam}
-            />
+        <div style={{ marginTop: '24px' }}>
+          <Routes>
+            <Route path="/" element={<StandingsView />} />
+            <Route path="/standings" element={<StandingsView />} />
+            <Route path="/standings/:routeLeagueId" element={<StandingsView />} />
+            <Route path="/predict/:routeLeagueId/:homeId/:awayId" element={<PredictorView isPremium={isPremium} onOpenPremiumModal={() => setIsPremiumModalOpen(true)} />} />
+            <Route path="/tracker" element={<HistoryTracker />} />
+          </Routes>
+        </div>
 
-            {(homeId && awayId) && (
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(340px, 1fr))', gap: '24px' }}>
-                <H2HViewer h2hData={h2hData} />
-                <PredictionPanel
-                  predictionData={predictionData}
-                  isPremium={isPremium}
-                  onOpenPremiumModal={() => setIsPremiumModalOpen(true)}
-                />
-              </div>
-            )}
-
-            {!isPremium && <AdBanner slotId="bottom-content-ad" />}
-          </div>
-        )}
+        {!isPremium && <AdBanner slotId="bottom-content-ad" />}
       </main>
 
       <footer style={{ borderTop: '1px solid var(--glass-border)', padding: '20px', textAlign: 'center', fontSize: '12px', color: 'var(--text-muted)' }}>
-        <p>FutbolAnalytics Pro — Plataforma de Estadisticas y Modelado Predictivo</p>
+        <p>FutbolAnalytics Pro — Plataforma de Estadísticas y Modelado Predictivo</p>
       </footer>
 
       <PremiumModal
@@ -169,18 +205,11 @@ function DashboardContent() {
   );
 }
 
-import HistoryTracker from './components/HistoryTracker';
-
 export default function App() {
   return (
     <BetSlipProvider>
       <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<DashboardContent />} />
-          <Route path="/predict/:routeLeagueId" element={<DashboardContent />} />
-          <Route path="/predict/:routeLeagueId/:homeId/:awayId" element={<DashboardContent />} />
-          <Route path="/tracker" element={<HistoryTracker />} />
-        </Routes>
+        <AppLayout />
         <BetSlip />
       </BrowserRouter>
     </BetSlipProvider>

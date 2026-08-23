@@ -40,17 +40,39 @@ export default function Navbar({ isPremium, onTogglePremium, onOpenPremiumModal,
 
           <div style={{ display: 'flex', gap: '16px', borderLeft: '1px solid var(--glass-border)', paddingLeft: '32px' }}>
             <button 
-              onClick={() => navigate('/')}
+              onClick={() => navigate('/standings')}
               style={{
                 background: 'transparent',
                 border: 'none',
-                color: !isTracker ? 'var(--accent-cyan)' : 'var(--text-secondary)',
-                fontWeight: !isTracker ? 800 : 500,
+                color: location.pathname.startsWith('/standings') || location.pathname === '/' ? 'var(--accent-cyan)' : 'var(--text-secondary)',
+                fontWeight: location.pathname.startsWith('/standings') || location.pathname === '/' ? 800 : 500,
                 fontSize: '14px',
                 cursor: 'pointer',
-                borderBottom: !isTracker ? '2px solid var(--accent-cyan)' : '2px solid transparent',
+                borderBottom: location.pathname.startsWith('/standings') || location.pathname === '/' ? '2px solid var(--accent-cyan)' : '2px solid transparent',
                 paddingBottom: '4px'
               }}
+            >
+              🏆 Liga
+            </button>
+            <button 
+              onClick={() => {
+                // Si no hay un partido seleccionado, redirigir a un partido por defecto o deshabilitar
+                if (!location.pathname.startsWith('/predict')) {
+                  navigate('/predict/PL/65/66'); // Fallback a City-Arsenal or let user select from table
+                }
+              }}
+              style={{
+                background: 'transparent',
+                border: 'none',
+                color: location.pathname.startsWith('/predict') ? 'var(--accent-cyan)' : 'var(--text-secondary)',
+                fontWeight: location.pathname.startsWith('/predict') ? 800 : 500,
+                fontSize: '14px',
+                cursor: location.pathname.startsWith('/predict') ? 'default' : 'pointer',
+                borderBottom: location.pathname.startsWith('/predict') ? '2px solid var(--accent-cyan)' : '2px solid transparent',
+                paddingBottom: '4px',
+                opacity: location.pathname.startsWith('/predict') ? 1 : 0.5
+              }}
+              title={!location.pathname.startsWith('/predict') ? "Selecciona un partido desde la tabla" : ""}
             >
               📊 Predictor
             </button>

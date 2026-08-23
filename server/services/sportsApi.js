@@ -97,6 +97,9 @@ function parseApiStandings(apiData, leagueId) {
       form: row.form ? row.form.split(',') : [],
       lastMatchDate: generateRandomRecentDate(),
       xG: Number((1.0 + (row.goalsFor / Math.max(row.playedGames, 1)) * 0.45).toFixed(2)),
+      avgShots: Number((10 + (row.goalsFor / Math.max(row.playedGames, 1)) * 2).toFixed(1)),
+      avgSOT: Number((3 + (row.goalsFor / Math.max(row.playedGames, 1)) * 1.5).toFixed(1)),
+      avgFouls: Number((12 + (row.goalsAgainst / Math.max(row.playedGames, 1))).toFixed(1)),
     }));
     return {
       league: {
@@ -151,6 +154,9 @@ function genStats(name, shortName, pos, totalTeams, played) {
     form,
     lastMatchDate: generateRandomRecentDate(),
     xG: Number((gfPer * 0.92).toFixed(2)),
+    avgShots: Number((9 + strength * 6).toFixed(1)), // 9 to 15
+    avgSOT: Number((3 + strength * 4).toFixed(1)), // 3 to 7
+    avgFouls: Number((14 - strength * 4).toFixed(1)), // 10 to 14 (weaker teams foul more)
   };
 }
 

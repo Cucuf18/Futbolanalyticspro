@@ -205,6 +205,100 @@ function runMonteCarloSimulation(xG_Home, xG_Away, homeStrength, awayStrength, i
 }
 
 /**
+ * Asian Handicap Engine
+ * Finds the handicap line that balances the probability of winning closest to 50%
+ */
+function calculateAsianHandicap(xG_Home, xG_Away) {
+  // Evaluaremos líneas desde -2.5 hasta +2.5
+  const lines = [-2.5, -2.0, -1.5, -1.0, -0.5, 0, 0.5, 1.0, 1.5, 2.0, 2.5];
+  let bestLine = 0;
+  let minDiff = 100;
+  let finalHomeProb = 0;
+  let finalAwayProb = 0;
+
+  for (let line of lines) {
+    let homeCoverProb = 0;
+    let awayCoverProb = 0;
+    
+    // Simulate Poisson matrix up to 10 goals to calculate cover probability
+    for (let h = 0; h <= 10; h++) {
+      const pHome = poisson(h, xG_Home);
+      for (let a = 0; a <= 10; a++) {
+        const pAway = poisson(a, xG_Away);
+        const prob = pHome * pAway;
+        
+        const adjustedHomeScore = h + line;
+        
+        if (adjustedHomeScore > a) homeCoverProb += prob;
+        else if (adjustedHomeScore < a) awayCoverProb += prob;
+        // if adjustedHomeScore == a, it's a push, probability is ignored/refunded
+      }
+    }
+
+    // Normalize probabilities excluding the push probability
+    const totalCoverProb = homeCoverProb + awayCoverProb;
+    if (totalCoverProb > 0) {
+      const normHome = (homeCoverProb / totalCoverProb) * 100;
+      const normAway = (awayCoverProb / totalCoverProb) * 100;
+      
+      const diff = Math.abs(normHome - 50);
+      if (diff < minDiff) {
+        minDiff = diff;
+        bestLine = line;
+        finalHomeProb = Math.round(normHome);
+        finalAwayProb = Math.round(normAway);
+      }
+    }
+  }
+
+  const formatLine = (l) => l > 0 ? `+${l}` : l === 0 ? '0' : `${l}`;
+  
+  return {
+    line: bestLine,
+    homeLabel: `AH ${formatLine(bestLine)}`,
+    awayLabel: `AH ${formatLine(-bestLine)}`,
+    homeProb: finalHomeProb,
+    awayProb: finalAwayProb,
+    homeFairOdds: Number((100 / finalHomeProb).toFixed(2)),
+    awayFairOdds: Number((100 / finalAwayProb).toFixed(2))
+  };
+}
+
+/**
+ * Star Pick Algorithm (El Pick del Partido)
+ * Scans all available markets and selects the best prediction based on statistical confidence and EV.
+ */
+function getStarPick(topPredictions, asianHandicap, matchInfo) {
+  const allPicks = [...topPredictions];
+  
+  // Añadimos el mercado de AH a las posibilidades
+  if (asianHandicap.homeProb >= 55) {
+    allPicks.push({
+      type: `AH_HOME_${asianHandicap.line}`,
+      label: `Hándicap Asiático Local: ${asianHandicap.homeLabel}`,
+      probability: asianHandicap.homeProb,
+      fairOdds: asianHandicap.homeFairOdds,
+      evThreshold: 'EV+'
+    });
+  } else if (asianHandicap.awayProb >= 55) {
+    allPicks.push({
+      type: `AH_AWAY_${-asianHandicap.line}`,
+      label: `Hándicap Asiático Visitante: ${asianHandicap.awayLabel}`,
+      probability: asianHandicap.awayProb,
+      fairOdds: asianHandicap.awayFairOdds,
+      evThreshold: 'EV+'
+    });
+  }
+
+  if (allPicks.length === 0) return null;
+
+  // Ordenamos por mayor probabilidad bruta. (En un entorno real, priorizaríamos EV si supiéramos las cuotas de mercado exactas).
+  allPicks.sort((a, b) => b.probability - a.probability);
+
+  return allPicks[0];
+}
+
+/**
  * Main function to predict match probabilities and metrics
  */
 export function calculateMatchPrediction(homeStats, awayStats, h2hHistory = []) {
@@ -426,7 +520,11 @@ export function calculateMatchPrediction(homeStats, awayStats, h2hHistory = []) 
   const confidenceScore = Math.min(95, Math.max(62, Math.round(50 + Math.abs(pctHomeWin - pctAwayWin) * 0.5 + (h2hHistory.length * 3))));
 
   // Correr Monte Carlo con la nueva data ajustada
-  const monteCarlo = runMonteCarloSimulation(xG_Home, xG_Away, homeStrength, awayStrength, 10000);
+  // Calcular Hándicap Asiático
+  const asianHandicap = calculateAsianHandicap(xG_Home, xG_Away);
+
+  // Calcular la Recomendación Estrella
+  const starPick = getStarPick(topPredictions, asianHandicap, homeStats, awayStats);
 
   return {
     probabilities: {
@@ -449,6 +547,8 @@ export function calculateMatchPrediction(homeStats, awayStats, h2hHistory = []) 
     confidenceScore,
     fairOdds,
     topPredictions,
+    asianHandicap,
+    starPick,
     monteCarlo,
     calculatedAt: new Date().toISOString(),
   };

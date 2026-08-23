@@ -1,5 +1,7 @@
 import React, { useState } from 'react';
 import { useBetSlip } from '../context/BetSlipContext';
+import DepthMetrics from './DepthMetrics';
+import MatchStarPick from './MatchStarPick';
 
 export default function PredictionPanel({ predictionData, isPremium, onOpenPremiumModal }) {
   const { addToSlip } = useBetSlip();
@@ -8,7 +10,7 @@ export default function PredictionPanel({ predictionData, isPremium, onOpenPremi
   if (!predictionData || !predictionData.prediction) return null;
 
   const { matchInfo, prediction } = predictionData;
-  const { probabilities, expectedGoals, probabilitiesSecondary, mostLikelyScore, fairOdds, topPredictions, confidenceScore } = prediction;
+  const { probabilities, expectedGoals, probabilitiesSecondary, mostLikelyScore, fairOdds, topPredictions, confidenceScore, starPick } = prediction;
 
   // Match Summary stats from Monte Carlo
   const summary = prediction.monteCarlo?.matchSummary;
@@ -60,6 +62,9 @@ export default function PredictionPanel({ predictionData, isPremium, onOpenPremi
         opacity: isPremium ? 1 : 0.45,
         transition: 'var(--transition-smooth)',
       }}>
+
+        {/* ========== STAR PICK SECTION ========== */}
+        <MatchStarPick starPick={starPick} matchInfo={matchInfo} />
 
         {/* ========== MATCH SUMMARY SECTION ========== */}
         {summary && (
@@ -213,6 +218,9 @@ export default function PredictionPanel({ predictionData, isPremium, onOpenPremi
             </div>
           </div>
         </div>
+
+        {/* ========== DEPTH METRICS ========== */}
+        <DepthMetrics homeTeam={matchInfo.homeTeam} awayTeam={matchInfo.awayTeam} />
 
         {/* ========== DETAILED METRICS ========== */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '14px', marginBottom: '24px' }}>
