@@ -10,6 +10,7 @@ import PremiumModal from './components/PremiumModal';
 import { BetSlipProvider } from './context/BetSlipContext';
 import BetSlip from './components/BetSlip';
 import HistoryTracker from './components/HistoryTracker';
+import CombinadasView from './components/CombinadasView';
 
 const LEAGUES = [
   { id: 'PL', name: 'Premier League', country: 'Inglaterra', code: 'ENG' },
@@ -248,6 +249,7 @@ function AppLayout() {
             <Route path="/predict/:routeLeagueId" element={<PredictorRedirect />} />
             <Route path="/predict/:routeLeagueId/:homeId/:awayId" element={<PredictorView isPremium={isPremium} onOpenPremiumModal={() => setIsPremiumModalOpen(true)} />} />
             <Route path="/tracker" element={<HistoryTracker />} />
+            <Route path="/combinadas" element={<CombinadasView />} />
           </Routes>
         </div>
 

@@ -1,8 +1,10 @@
 import React from 'react';
 import { useBetSlip } from '../context/BetSlipContext';
+import { useNavigate } from 'react-router-dom';
 
 export default function BetSlip() {
   const { slip, removeFromSlip, clearSlip, settleBet } = useBetSlip();
+  const navigate = useNavigate();
 
   if (slip.length === 0) return null;
 
@@ -22,7 +24,7 @@ export default function BetSlip() {
     }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
         <h3 style={{ fontSize: '15px', fontWeight: 800, color: 'var(--accent-gold)' }}>
-          🎟️ Mi Combinada ({slip.length})
+          Mi Combinada ({slip.length})
         </h3>
         <button 
           onClick={clearSlip}
@@ -61,22 +63,43 @@ export default function BetSlip() {
                 <button 
                   title="Marcar como Acertado"
                   onClick={() => settleBet(pick.matchId, 'WON')}
-                  style={{ background: 'rgba(0, 230, 118, 0.1)', border: '1px solid var(--accent-green)', color: 'var(--accent-green)', borderRadius: '4px', cursor: 'pointer', padding: '2px 6px', fontSize: '12px' }}
+                  style={{ background: 'rgba(0, 230, 118, 0.1)', border: '1px solid var(--accent-green)', color: 'var(--accent-green)', borderRadius: '4px', cursor: 'pointer', padding: '2px 6px', fontSize: '10px', fontWeight: 700 }}
                 >
-                  ✅
+                  Ok
                 </button>
                 <button 
                   title="Marcar como Fallado"
                   onClick={() => settleBet(pick.matchId, 'LOST')}
-                  style={{ background: 'rgba(255, 59, 48, 0.1)', border: '1px solid var(--accent-red)', color: 'var(--accent-red)', borderRadius: '4px', cursor: 'pointer', padding: '2px 6px', fontSize: '12px' }}
+                  style={{ background: 'rgba(255, 59, 48, 0.1)', border: '1px solid var(--accent-red)', color: 'var(--accent-red)', borderRadius: '4px', cursor: 'pointer', padding: '2px 6px', fontSize: '10px', fontWeight: 700 }}
                 >
-                  ❌
+                  Err
                 </button>
               </div>
             </div>
           </div>
         ))}
       </div>
+
+      <button 
+        onClick={() => navigate('/combinadas')} 
+        style={{ 
+          width: '100%', 
+          marginTop: '12px', 
+          background: 'linear-gradient(135deg, #ffe066 0%, #ffaa00 100%)', 
+          color: '#000', 
+          border: 'none', 
+          padding: '10px', 
+          borderRadius: '10px', 
+          cursor: 'pointer', 
+          fontWeight: 800, 
+          fontSize: '12px',
+          transition: 'all 0.2s ease'
+        }}
+        onMouseOver={(e) => e.target.style.transform = 'scale(1.02)'}
+        onMouseOut={(e) => e.target.style.transform = 'scale(1)'}
+      >
+        Ver boleto completo
+      </button>
     </div>
   );
 }

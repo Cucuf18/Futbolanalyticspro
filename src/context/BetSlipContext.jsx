@@ -19,6 +19,20 @@ export function BetSlipProvider({ children }) {
 
   useEffect(() => {
     localStorage.setItem('bet_history', JSON.stringify(history));
+    if (history.length > 0) {
+      fetch('/api/learn', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ history })
+      })
+      .then(res => res.json())
+      .then(data => {
+        if (data.success) {
+          console.log('Model optimized weights synced:', data.weights);
+        }
+      })
+      .catch(err => console.error('Error optimizing weights:', err));
+    }
   }, [history]);
 
   const addToSlip = (pick) => {

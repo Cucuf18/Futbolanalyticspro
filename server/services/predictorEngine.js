@@ -1,8 +1,5 @@
-/**
- * Statistical Football Prediction Engine using Poisson Distribution,
- * Dixon-Coles expected goals (xG) matrix, form weighting decay,
- * and Monte Carlo simulation with match event modeling.
- */
+import { getWeights } from './weightOptimizer.js';
+
 
 // Helper to calculate factorial k!
 function factorial(n) {
@@ -341,6 +338,7 @@ function estimateFallbackStats(xG_Home, xG_Away, homeStrength, awayStrength) {
  * marketType is attached to the pick for frontend rendering differentiation.
  */
 function getStarPick(topPredictions, asianHandicap, monteCarloSummary, xG_Home, xG_Away, homeStrength, awayStrength) {
+  const weights = getWeights();
   const allPicks = [...topPredictions];
 
   // Attach marketType to existing top predictions
@@ -387,7 +385,7 @@ function getStarPick(topPredictions, asianHandicap, monteCarloSummary, xG_Home, 
 
   // Per-team estimates for shots and offsides
   const homeSoT = fallback.homeShotsOnTarget;
-  const awaySoT = fallback.awayShotsOnTarget;
+  const awaySoT = fallback.awaySoT || fallback.awayShotsOnTarget;
   const homeShots = fallback.homeTotalShots;
   const awayShots = fallback.awayTotalShots;
   const homeOffsides = fallback.homeOffsides;
@@ -491,25 +489,38 @@ function getStarPick(topPredictions, asianHandicap, monteCarloSummary, xG_Home, 
   }
 
   // ─── COMPETENCIA: el pick de mayor probabilidad gana sin importar la categoria ───
-  allPicks.sort((a, b) => b.probability - a.probability);
+  // Filter by min confidence threshold to protect Hit Rate
+  const minProb = weights.starPickMinProbability || 65;
+  const filteredPicks = allPicks.filter(p => p.probability >= minProb);
+  
+  if (filteredPicks.length === 0) {
+    return null;
+  }
 
-  return allPicks[0];
+  filteredPicks.sort((a, b) => b.probability - a.probability);
+
+  return filteredPicks[0];
 }
 
 /**
  * Main function to predict match probabilities and metrics
  */
 export function calculateMatchPrediction(homeStats, awayStats, h2hHistory = []) {
+  const weights = getWeights();
   const leagueAvgGoals = 1.38;
-  const homeAdvantage = 1.14;
+  const homeAdvantage = weights.homeAdvantage;
 
-  // EMA Momentum
-  const homeFormMultiplier = calculateEMAMomentum(homeStats.form);
-  const awayFormMultiplier = calculateEMAMomentum(awayStats.form);
+  // EMA Momentum with adjustment weight
+  const homeFormRaw = calculateEMAMomentum(homeStats.form);
+  const awayFormRaw = calculateEMAMomentum(awayStats.form);
+  const homeFormMultiplier = 1.0 + (homeFormRaw - 1.0) * weights.emaWeight;
+  const awayFormMultiplier = 1.0 + (awayFormRaw - 1.0) * weights.emaWeight;
 
-  // Penalización por fatiga
-  const homeFatigue = calculateFatiguePenalty(homeStats.lastMatchDate);
-  const awayFatigue = calculateFatiguePenalty(awayStats.lastMatchDate);
+  // Penalización por fatiga with adjustment multiplier
+  const homeFatigueRaw = calculateFatiguePenalty(homeStats.lastMatchDate);
+  const awayFatigueRaw = calculateFatiguePenalty(awayStats.lastMatchDate);
+  const homeFatigue = homeFatigueRaw < 1.0 ? (1.0 - (1.0 - homeFatigueRaw) * weights.fatigueMultiplier) : 1.0;
+  const awayFatigue = awayFatigueRaw < 1.0 ? (1.0 - (1.0 - awayFatigueRaw) * weights.fatigueMultiplier) : 1.0;
 
   // ==============================================================
   // 1. SUAVIZADO DE LAPLACE (Regresión a la Media)
@@ -525,11 +536,11 @@ export function calculateMatchPrediction(homeStats, awayStats, h2hHistory = []) 
   const smoothedAwayGF = awayStats.goalsFor + (leagueAvgGoals * smoothingMatches);
   const smoothedAwayGA = awayStats.goalsAgainst + (leagueAvgGoals * smoothingMatches);
 
-  // Aplicamos EMA Momentum y Fatiga a la fuerza ofensiva
-  const homeAttack = ((smoothedHomeGF / smoothedHomePlayed) / leagueAvgGoals) * homeFormMultiplier * homeFatigue;
+  // Aplicamos EMA Momentum, Fatiga y multiplicadores de ataque a la fuerza ofensiva
+  const homeAttack = ((smoothedHomeGF / smoothedHomePlayed) / leagueAvgGoals) * homeFormMultiplier * homeFatigue * weights.homeAttackMultiplier;
   const homeDefense = ((smoothedHomeGA / smoothedHomePlayed) / leagueAvgGoals);
 
-  const awayAttack = ((smoothedAwayGF / smoothedAwayPlayed) / leagueAvgGoals) * awayFormMultiplier * awayFatigue;
+  const awayAttack = ((smoothedAwayGF / smoothedAwayPlayed) / leagueAvgGoals) * awayFormMultiplier * awayFatigue * weights.awayAttackMultiplier;
   const awayDefense = ((smoothedAwayGA / smoothedAwayPlayed) / leagueAvgGoals);
 
   let base_xG_Home = homeAttack * awayDefense * leagueAvgGoals * homeAdvantage;
@@ -537,7 +548,7 @@ export function calculateMatchPrediction(homeStats, awayStats, h2hHistory = []) 
 
   // ==============================================================
   // 2. PONDERACIÓN DEL HISTORIAL DIRECTO (H2H)
-  // El H2H pesa más a inicio de temporada (hasta 70%) y baja progresivamente
+  // El H2H pesa más a inicio de temporada y baja progresivamente
   // ==============================================================
   if (h2hHistory && h2hHistory.length > 0) {
     let h2hGoalsHome = 0;
@@ -568,8 +579,8 @@ export function calculateMatchPrediction(homeStats, awayStats, h2hHistory = []) 
     const avgH2H_Home = totalWeight > 0 ? h2hGoalsHome / totalWeight : 0;
     const avgH2H_Away = totalWeight > 0 ? h2hGoalsAway / totalWeight : 0;
 
-    // Peso global del H2H: 70% si N=0, decrece 5% por cada partido jugado (mínimo 20%)
-    const h2hWeight = Math.max(0.20, 0.70 - (homeStats.played * 0.05)); 
+    // Peso global del H2H: h2hBaseWeight si N=0, decrece 5% por cada partido jugado (mínimo 20%)
+    const h2hWeight = Math.max(0.20, weights.h2hBaseWeight - (homeStats.played * 0.05)); 
     const formWeight = 1.0 - h2hWeight;
 
     base_xG_Home = (base_xG_Home * formWeight) + (avgH2H_Home * h2hWeight);

@@ -5,6 +5,7 @@ import { fileURLToPath } from 'url';
 import fs from 'fs';
 import { config } from './config.js';
 import { getLeagueStandings, getH2HHistory, getMatchPredictionDetails } from './services/sportsApi.js';
+import { learn, getWeights } from './services/weightOptimizer.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -58,6 +59,27 @@ app.get('/api/predict/:homeId/:awayId', async (req, res) => {
     const leagueId = req.query.leagueId || 'PL';
     const details = await getMatchPredictionDetails(homeId, awayId, leagueId);
     res.json({ success: true, data: details });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Learn feedback loop
+app.post('/api/learn', (req, res) => {
+  try {
+    const { history } = req.body;
+    const updatedWeights = learn(history);
+    res.json({ success: true, weights: updatedWeights });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Get current engine weights
+app.get('/api/weights', (req, res) => {
+  try {
+    const currentWeights = getWeights();
+    res.json({ success: true, weights: currentWeights });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }

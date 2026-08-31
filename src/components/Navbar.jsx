@@ -4,6 +4,7 @@ export default function Navbar({ isPremium, onTogglePremium, onOpenPremiumModal,
   const navigate = useNavigate();
   const location = useLocation();
   const isTracker = location.pathname === '/tracker';
+  const isCombinadas = location.pathname === '/combinadas';
 
   return (
     <header className="glass-card" style={{ borderRadius: 0, borderTop: 'none', borderLeft: 'none', borderRight: 'none', padding: '14px 24px', position: 'sticky', top: 0, zIndex: 100 }}>
@@ -52,13 +53,12 @@ export default function Navbar({ isPremium, onTogglePremium, onOpenPremiumModal,
                 paddingBottom: '4px'
               }}
             >
-              🏆 Liga
+              Liga
             </button>
             <button 
               onClick={() => {
-                // Si no hay un partido seleccionado, redirigir a un partido por defecto o deshabilitar
                 if (!location.pathname.startsWith('/predict')) {
-                  navigate('/predict/PL/65/66'); // Fallback a City-Arsenal or let user select from table
+                  navigate('/predict/PL/65/66');
                 }
               }}
               style={{
@@ -74,7 +74,22 @@ export default function Navbar({ isPremium, onTogglePremium, onOpenPremiumModal,
               }}
               title={!location.pathname.startsWith('/predict') ? "Selecciona un partido desde la tabla" : ""}
             >
-              📊 Predictor
+              Predictor
+            </button>
+            <button 
+              onClick={() => navigate('/combinadas')}
+              style={{
+                background: 'transparent',
+                border: 'none',
+                color: isCombinadas ? 'var(--accent-cyan)' : 'var(--text-secondary)',
+                fontWeight: isCombinadas ? 800 : 500,
+                fontSize: '14px',
+                cursor: 'pointer',
+                borderBottom: isCombinadas ? '2px solid var(--accent-cyan)' : '2px solid transparent',
+                paddingBottom: '4px'
+              }}
+            >
+              Boleto
             </button>
             <button 
               onClick={() => navigate('/tracker')}
@@ -89,7 +104,7 @@ export default function Navbar({ isPremium, onTogglePremium, onOpenPremiumModal,
                 paddingBottom: '4px'
               }}
             >
-              📈 Rendimiento
+              Rendimiento
             </button>
           </div>
         </div>

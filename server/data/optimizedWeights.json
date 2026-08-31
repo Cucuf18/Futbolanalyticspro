@@ -1,0 +1,9 @@
+{
+  "homeAdvantage": 1.14,
+  "homeAttackMultiplier": 1.0,
+  "awayAttackMultiplier": 1.0,
+  "emaWeight": 1.0,
+  "fatigueMultiplier": 1.0,
+  "h2hBaseWeight": 0.70,
+  "starPickMinProbability": 65
+}
