@@ -47,7 +47,7 @@ export default function BetSlip() {
               ✕
             </button>
             <div style={{ fontSize: '12px', fontWeight: 700, color: 'var(--text-primary)', marginBottom: '4px', paddingRight: '16px' }}>
-              {pick.homeTeam} vs {pick.awayTeam}
+              {pick.homeTeamFull || pick.homeTeam} vs {pick.awayTeamFull || pick.awayTeam}
             </div>
             <div style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>
               Pick: <span style={{ color: 'var(--accent-cyan)', fontWeight: 600 }}>{pick.valueBetType}</span>

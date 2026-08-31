@@ -84,7 +84,7 @@ export default function HistoryTracker() {
                   borderLeft: `4px solid ${bet.status === 'WON' ? 'var(--accent-green)' : 'var(--accent-red)'}`
                 }}>
                   <div>
-                    <div style={{ fontSize: '14px', fontWeight: 700, marginBottom: '4px' }}>{bet.homeTeam} vs {bet.awayTeam}</div>
+                    <div style={{ fontSize: '14px', fontWeight: 700, marginBottom: '4px' }}>{bet.homeTeamFull || bet.homeTeam} vs {bet.awayTeamFull || bet.awayTeam}</div>
                     <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
                       Pick: <span style={{ color: 'var(--accent-cyan)' }}>{bet.valueBetType}</span> &nbsp;|&nbsp; 
                       Prob: {bet.probability}%
