@@ -9,6 +9,7 @@ const MARKET_CONFIG = {
   TIROS: { icon: 'TIR', color: '#ff6d00', gradient: 'rgba(255, 109, 0, 0.15)', border: 'rgba(255, 109, 0, 0.4)', label: 'TIROS AL ARCO' },
   CORNERS: { icon: 'COR', color: '#448aff', gradient: 'rgba(68, 138, 255, 0.15)', border: 'rgba(68, 138, 255, 0.4)', label: 'CORNERS' },
   OFFSIDES: { icon: 'OFF', color: '#ff5252', gradient: 'rgba(255, 82, 82, 0.15)', border: 'rgba(255, 82, 82, 0.4)', label: 'FUERAS DE JUEGO' },
+  FALTAS: { icon: 'FAL', color: '#ffb300', gradient: 'rgba(255, 179, 0, 0.15)', border: 'rgba(255, 179, 0, 0.4)', label: 'FALTAS' },
   BTTS: { icon: 'B2S', color: '#00e676', gradient: 'rgba(0, 230, 118, 0.15)', border: 'rgba(0, 230, 118, 0.4)', label: 'AMBOS ANOTAN' }
 };
 
