@@ -342,6 +342,7 @@ function estimateFallbackStats(xG_Home, xG_Away, homeStrength, awayStrength) {
 const BETANO_MARKETS = ['RESULTADO', 'GOLES', 'HANDICAP', 'TARJETAS', 'CORNERS', 'BTTS', 'TIROS', 'OFFSIDES', 'FALTAS'];
 
 
+
 function getMatchPicks(topPredictions, asianHandicap, monteCarloSummary, xG_Home, xG_Away, homeStrength, awayStrength, homeExt, awayExt, h2hHistory) {
   const weights = getWeights();
   const allPicks = [...topPredictions];
@@ -363,27 +364,20 @@ function getMatchPicks(topPredictions, asianHandicap, monteCarloSummary, xG_Home
   }
 
   const stats = monteCarloSummary || {};
-  
-  // Combine external stats or use reasonable defaults
   const homeYellows = homeExt ? homeExt.avgYellowCards : 2.5;
   const awayYellows = awayExt ? awayExt.avgYellowCards : 2.5;
   const avgCards = homeYellows + awayYellows;
-
   const homeCorners = homeExt ? homeExt.avgCorners : 5.0;
   const awayCorners = awayExt ? awayExt.avgCorners : 5.0;
-  const avgCorners = (homeCorners + awayCorners); // Total match corners
-
+  const avgCorners = (homeCorners + awayCorners);
   const homeSot = homeExt ? homeExt.avgShotsOnTarget : 4.5;
   const awaySot = awayExt ? awayExt.avgShotsOnTarget : 4.5;
-  
   const homeShots = homeExt ? homeExt.avgTotalShots : 12.0;
   const awayShots = awayExt ? awayExt.avgTotalShots : 12.0;
   const totalShots = homeShots + awayShots;
-
   const homeFouls = homeExt ? homeExt.avgFouls : 12.0;
   const awayFouls = awayExt ? awayExt.avgFouls : 12.0;
   const totalFouls = homeFouls + awayFouls;
-
   const totalOffsides = (homeExt ? homeExt.avgOffsides : 2.0) + (awayExt ? awayExt.avgOffsides : 2.0);
   
   const isDerby = h2hHistory && h2hHistory.length > 5;
@@ -398,37 +392,24 @@ function getMatchPicks(topPredictions, asianHandicap, monteCarloSummary, xG_Home
   const cards55 = calculateLineProb(effectiveCards, 5.5);
   if (cards45.overProb >= 55) allPicks.push({ type: 'OVER_45_CARDS', label: 'Mas de 4.5 Tarjetas Amarillas', probability: cards45.overProb, fairOdds: Number((100 / cards45.overProb).toFixed(2)), evThreshold: 'Estadistico', marketType: 'TARJETAS', reasons: [`El promedio esperado es ${effectiveCards.toFixed(1)} tarjetas.`, isDerby ? 'Derbi/Rivalidad detectada.' : ''] });
   if (cards55.underProb >= 60) allPicks.push({ type: 'UNDER_55_CARDS', label: 'Menos de 5.5 Tarjetas Amarillas', probability: cards55.underProb, fairOdds: Number((100 / cards55.underProb).toFixed(2)), evThreshold: 'Estadistico', marketType: 'TARJETAS', reasons: ['Tendencia disciplinaria limpia de ambos equipos.'] });
-  
-  // Safe card picks
-  const cards25 = calculateLineProb(effectiveCards, 2.5);
-  if (cards25.overProb >= 70) allPicks.push({ type: 'OVER_25_CARDS', label: 'Mas de 2.5 Tarjetas Amarillas', probability: cards25.overProb, fairOdds: Number((100 / cards25.overProb).toFixed(2)), evThreshold: 'Base', marketType: 'TARJETAS', reasons: ['Línea muy conservadora con altísima probabilidad.'] });
 
   // ─── CORNERS ───
-  const corners75 = calculateLineProb(avgCorners, 7.5);
   const corners85 = calculateLineProb(avgCorners, 8.5);
   const corners95 = calculateLineProb(avgCorners, 9.5);
   const corners105 = calculateLineProb(avgCorners, 10.5);
   if (corners85.overProb >= 55) allPicks.push({ type: 'OVER_85_CORNERS', label: 'Mas de 8.5 Corners', probability: corners85.overProb, fairOdds: Number((100 / corners85.overProb).toFixed(2)), evThreshold: 'Estadistico', marketType: 'CORNERS', reasons: [`El promedio del partido es ${avgCorners.toFixed(1)} corners.`] });
   if (corners95.overProb >= 50) allPicks.push({ type: 'OVER_95_CORNERS', label: 'Mas de 9.5 Corners', probability: corners95.overProb, fairOdds: Number((100 / corners95.overProb).toFixed(2)), evThreshold: 'Estadistico', marketType: 'CORNERS', reasons: [`El volumen ofensivo justifica esta línea (Promedio: ${avgCorners.toFixed(1)}).`] });
   if (corners105.underProb >= 60) allPicks.push({ type: 'UNDER_105_CORNERS', label: 'Menos de 10.5 Corners', probability: corners105.underProb, fairOdds: Number((100 / corners105.underProb).toFixed(2)), evThreshold: 'Estadistico', marketType: 'CORNERS', reasons: ['Juego centrado, baja dependencia de centros.'] });
-  
-  // Safe corner picks
-  if (corners75.overProb >= 70) allPicks.push({ type: 'OVER_75_CORNERS', label: 'Mas de 7.5 Corners', probability: corners75.overProb, fairOdds: Number((100 / corners75.overProb).toFixed(2)), evThreshold: 'Base', marketType: 'CORNERS', reasons: ['Línea baja de corners altamente probable.'] });
 
   // ─── TIROS Y REMATES ───
   const homeSot35 = calculateLineProb(homeSot, 3.5);
   const awaySot35 = calculateLineProb(awaySot, 3.5);
   const totalShots215 = calculateLineProb(totalShots, 21.5);
   const totalShots245 = calculateLineProb(totalShots, 24.5);
-  
   if (homeSot35.overProb >= 55) allPicks.push({ type: 'HOME_SOT_OVER_35', label: `Local: Mas de 3.5 Tiros a Puerta`, probability: homeSot35.overProb, fairOdds: Number((100 / homeSot35.overProb).toFixed(2)), evThreshold: 'Estadistico', marketType: 'TIROS', reasons: [`Promedio del local: ${homeSot.toFixed(1)} tiros al arco.`] });
   if (awaySot35.overProb >= 55) allPicks.push({ type: 'AWAY_SOT_OVER_35', label: `Visitante: Mas de 3.5 Tiros a Puerta`, probability: awaySot35.overProb, fairOdds: Number((100 / awaySot35.overProb).toFixed(2)), evThreshold: 'Estadistico', marketType: 'TIROS', reasons: [`Promedio del visitante: ${awaySot.toFixed(1)} tiros al arco.`] });
   if (totalShots215.overProb >= 60) allPicks.push({ type: 'OVER_215_TOTAL_SHOTS', label: 'Mas de 21.5 Remates Totales en el Partido', probability: totalShots215.overProb, fairOdds: Number((100 / totalShots215.overProb).toFixed(2)), evThreshold: 'Estadistico', marketType: 'TIROS', reasons: [`Remates esperados totales: ${totalShots.toFixed(1)}.`] });
   if (totalShots245.underProb >= 60) allPicks.push({ type: 'UNDER_245_TOTAL_SHOTS', label: 'Menos de 24.5 Remates Totales en el Partido', probability: totalShots245.underProb, fairOdds: Number((100 / totalShots245.underProb).toFixed(2)), evThreshold: 'Estadistico', marketType: 'TIROS', reasons: ['Tendencia a partido cerrado con pocos espacios.'] });
-
-  // Safe shots
-  const totalShots185 = calculateLineProb(totalShots, 18.5);
-  if (totalShots185.overProb >= 70) allPicks.push({ type: 'OVER_185_TOTAL_SHOTS', label: 'Mas de 18.5 Remates Totales', probability: totalShots185.overProb, fairOdds: Number((100 / totalShots185.overProb).toFixed(2)), evThreshold: 'Base', marketType: 'TIROS', reasons: ['Gran cantidad de tiros generados por partido en promedio.'] });
 
   // ─── FALTAS ───
   const fouls215 = calculateLineProb(effectiveFouls, 21.5);
@@ -440,19 +421,54 @@ function getMatchPicks(topPredictions, asianHandicap, monteCarloSummary, xG_Home
   const offsides35 = calculateLineProb(totalOffsides, 3.5);
   if (offsides35.overProb >= 55) allPicks.push({ type: 'OVER_35_OFFSIDES', label: 'Mas de 3.5 Fueras de Juego', probability: offsides35.overProb, fairOdds: Number((100 / offsides35.overProb).toFixed(2)), evThreshold: 'Estadistico', marketType: 'OFFSIDES', reasons: [`Promedio total esperado: ${totalOffsides.toFixed(1)}.`] });
 
-  // ─── GOLES SEGUROS ───
-  const g05 = calculateLineProb(xG_Home + xG_Away, 0.5);
-  if (g05.overProb >= 70) allPicks.push({ type: 'OVER_05_GOALS', label: 'Mas de 0.5 Goles en el Partido', probability: g05.overProb, fairOdds: Number((100 / g05.overProb).toFixed(2)), evThreshold: 'Base', marketType: 'GOLES', reasons: ['Altísima probabilidad matemática de al menos 1 gol.'] });
-
-  const betanoPicks = allPicks.filter(p => p.label && p.label !== ''); // Ensure no empty picks
+  // FILTER VALID PICKS ONLY
+  const betanoPicks = allPicks.filter(p => p.label && p.label !== '');
   
+  // PRIMARY SORTING (Only genuine statistical picks)
   const safe = betanoPicks.filter(p => p.probability >= 70).sort((a,b) => b.probability - a.probability);
   const medium = betanoPicks.filter(p => p.probability >= 58 && p.probability < 70).sort((a,b) => b.probability - a.probability);
   const risky = betanoPicks.filter(p => p.probability < 58).sort((a,b) => b.probability - a.probability);
 
-  // Guarantee at least 3 safe picks by relaxing constraints internally
-  while (safe.length < 3 && medium.length > 0) safe.push(medium.shift());
-  while (safe.length < 3 && risky.length > 0) safe.push(risky.shift());
+  // ─── FALLBACK SAFE PICKS (ONLY IF NEEDED) ───
+  // We keep a reserve of ultra-safe generic picks, but we only use them if we can't reach 3 safe picks.
+  if (safe.length < 3) {
+    const reservePicks = [];
+    
+    // Goles
+    const g05 = calculateLineProb(xG_Home + xG_Away, 0.5);
+    if (g05.overProb >= 70) reservePicks.push({ type: 'OVER_05_GOALS', label: 'Mas de 0.5 Goles en el Partido', probability: g05.overProb, fairOdds: Number((100 / g05.overProb).toFixed(2)), evThreshold: 'Base', marketType: 'GOLES', reasons: ['Altísima probabilidad matemática de al menos 1 gol.'] });
+    
+    // Tarjetas Conservador
+    const cards25 = calculateLineProb(effectiveCards, 2.5);
+    if (cards25.overProb >= 70) reservePicks.push({ type: 'OVER_25_CARDS', label: 'Mas de 2.5 Tarjetas Amarillas', probability: cards25.overProb, fairOdds: Number((100 / cards25.overProb).toFixed(2)), evThreshold: 'Base', marketType: 'TARJETAS', reasons: ['Línea muy conservadora disciplinaria.'] });
+
+    // Corners Conservador
+    const corners75 = calculateLineProb(avgCorners, 7.5);
+    if (corners75.overProb >= 70) reservePicks.push({ type: 'OVER_75_CORNERS', label: 'Mas de 7.5 Corners', probability: corners75.overProb, fairOdds: Number((100 / corners75.overProb).toFixed(2)), evThreshold: 'Base', marketType: 'CORNERS', reasons: ['Línea baja de corners altamente probable.'] });
+
+    // Remates Conservador
+    const totalShots185 = calculateLineProb(totalShots, 18.5);
+    if (totalShots185.overProb >= 70) reservePicks.push({ type: 'OVER_185_TOTAL_SHOTS', label: 'Mas de 18.5 Remates Totales', probability: totalShots185.overProb, fairOdds: Number((100 / totalShots185.overProb).toFixed(2)), evThreshold: 'Base', marketType: 'TIROS', reasons: ['Gran cantidad de tiros generados por partido en promedio.'] });
+
+    reservePicks.sort((a,b) => b.probability - a.probability);
+    
+    // Fill the missing slots from the reserve without exceeding 3 total
+    while (safe.length < 3 && reservePicks.length > 0) {
+      const pickToAdd = reservePicks.shift();
+      // Ensure we don't add duplicate market types if we already have them in safe to increase variety
+      if (!safe.find(p => p.type === pickToAdd.type)) {
+        safe.push(pickToAdd);
+      }
+    }
+  }
+
+  // If still under 3, pull from medium
+  while (safe.length < 3 && medium.length > 0) {
+    safe.push(medium.shift());
+  }
+
+  // Final re-sort of the safe array so the highest probability is first
+  safe.sort((a, b) => b.probability - a.probability);
 
   return {
     safe: safe.slice(0, 3), // Exact 3 top picks
