@@ -133,8 +133,17 @@ export default function CombinadasView() {
                   </div>
 
                   {/* Pick details */}
-                  <div style={{ fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '14px' }}>
+                  <div style={{ fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '14px', display: 'flex', alignItems: 'center', gap: '8px' }}>
                     Prediccion: <span style={{ color: 'var(--accent-cyan)', fontWeight: 700 }}>{pick.valueBetType}</span>
+                    {pick.riskLevel && (
+                      <span style={{
+                        padding: '2px 6px', borderRadius: '4px', fontSize: '10px', fontWeight: 800,
+                        background: pick.riskLevel === 'SAFE' ? 'rgba(0, 230, 118, 0.2)' : pick.riskLevel === 'MEDIUM' ? 'rgba(255, 170, 0, 0.2)' : 'rgba(255, 82, 82, 0.2)',
+                        color: pick.riskLevel === 'SAFE' ? 'var(--accent-green)' : pick.riskLevel === 'MEDIUM' ? 'var(--accent-gold)' : 'var(--accent-red)'
+                      }}>
+                        {pick.riskLevel === 'SAFE' ? 'SEGURO' : pick.riskLevel === 'MEDIUM' ? 'MEDIO' : 'ALTO RIESGO'}
+                      </span>
+                    )}
                   </div>
 
                   {/* Actions & Metrics */}

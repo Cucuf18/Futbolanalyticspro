@@ -13,7 +13,9 @@ const DEFAULT_WEIGHTS = {
   emaWeight: 1.0,
   fatigueMultiplier: 1.0,
   h2hBaseWeight: 0.70,
-  starPickMinProbability: 65
+  starPickMinProbability: 65,
+  safeThreshold: 70,
+  mediumThreshold: 58
 };
 
 // Utility to read weights
@@ -55,6 +57,8 @@ export function learn(history) {
   let homeAttackAdj = 0;
   let awayAttackAdj = 0;
   let h2hWeightAdj = 0;
+  let safeThresholdAdj = 0;
+  let mediumThresholdAdj = 0;
 
   // Scan through prediction history
   history.forEach(bet => {
@@ -98,11 +102,22 @@ export function learn(history) {
     }
   });
 
+  // Adjust thresholds based on risk level performance
+    if (bet.riskLevel === 'SAFE') {
+      if (!isWon) safeThresholdAdj += 0.5; // Make safe stricter
+      else safeThresholdAdj -= 0.1; // Make safe slightly looser
+    } else if (bet.riskLevel === 'MEDIUM') {
+      if (!isWon) mediumThresholdAdj += 0.5;
+      else mediumThresholdAdj -= 0.1;
+    }
+
   // Apply adjustments with strict boundaries to avoid wild predictions
   weights.homeAdvantage = Math.max(1.0, Math.min(1.30, weights.homeAdvantage + homeAdvantageAdj));
   weights.homeAttackMultiplier = Math.max(0.80, Math.min(1.20, weights.homeAttackMultiplier + homeAttackAdj));
   weights.awayAttackMultiplier = Math.max(0.80, Math.min(1.20, weights.awayAttackMultiplier + awayAttackAdj));
   weights.h2hBaseWeight = Math.max(0.30, Math.min(0.90, weights.h2hBaseWeight + h2hWeightAdj));
+  weights.safeThreshold = Math.max(65, Math.min(85, (weights.safeThreshold || 70) + safeThresholdAdj));
+  weights.mediumThreshold = Math.max(50, Math.min(65, (weights.mediumThreshold || 58) + mediumThresholdAdj));
 
   saveWeights(weights);
   return weights;

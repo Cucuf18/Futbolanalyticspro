@@ -337,175 +337,92 @@ function estimateFallbackStats(xG_Home, xG_Away, homeStrength, awayStrength) {
  * 
  * marketType is attached to the pick for frontend rendering differentiation.
  */
-function getStarPick(topPredictions, asianHandicap, monteCarloSummary, xG_Home, xG_Away, homeStrength, awayStrength) {
+
+// BETANO WHITELIST MARKETS
+const BETANO_MARKETS = ['RESULTADO', 'GOLES', 'HANDICAP', 'TARJETAS', 'CORNERS', 'BTTS'];
+
+function getMatchPicks(topPredictions, asianHandicap, monteCarloSummary, xG_Home, xG_Away, homeStrength, awayStrength, homeExt, awayExt, h2hHistory) {
   const weights = getWeights();
   const allPicks = [...topPredictions];
 
-  // Attach marketType to existing top predictions
   allPicks.forEach(p => {
     if (!p.marketType) {
       if (p.type.includes('HOME_WIN') || p.type.includes('AWAY_WIN')) p.marketType = 'RESULTADO';
       else if (p.type.includes('OVER') || p.type.includes('UNDER')) p.marketType = 'GOLES';
-      else if (p.type.includes('BTTS')) p.marketType = 'GOLES';
+      else if (p.type.includes('BTTS')) p.marketType = 'BTTS';
       else p.marketType = 'RESULTADO';
     }
+    p.reasons = ['Basado en la regresión de Poisson para expectativa de goles (xG) de ambos equipos.'];
   });
 
-  // ─── Asian Handicap ───
   if (asianHandicap.homeProb >= 55) {
     allPicks.push({
-      type: `AH_HOME_${asianHandicap.line}`,
-      label: `Handicap Asiatico Local: ${asianHandicap.homeLabel}`,
-      probability: asianHandicap.homeProb,
-      fairOdds: asianHandicap.homeFairOdds,
-      evThreshold: 'EV+',
-      marketType: 'HANDICAP'
+      type: `AH_HOME_${asianHandicap.line}`, label: `Handicap Asiatico Local: ${asianHandicap.homeLabel}`,
+      probability: asianHandicap.homeProb, fairOdds: asianHandicap.homeFairOdds, evThreshold: 'EV+', marketType: 'HANDICAP',
+      reasons: [`El modelo le asigna un ${asianHandicap.homeProb}% de cubrir esta línea considerando su fuerza relativa.`]
     });
   } else if (asianHandicap.awayProb >= 55) {
     allPicks.push({
-      type: `AH_AWAY_${-asianHandicap.line}`,
-      label: `Handicap Asiatico Visitante: ${asianHandicap.awayLabel}`,
-      probability: asianHandicap.awayProb,
-      fairOdds: asianHandicap.awayFairOdds,
-      evThreshold: 'EV+',
-      marketType: 'HANDICAP'
+      type: `AH_AWAY_${-asianHandicap.line}`, label: `Handicap Asiatico Visitante: ${asianHandicap.awayLabel}`,
+      probability: asianHandicap.awayProb, fairOdds: asianHandicap.awayFairOdds, evThreshold: 'EV+', marketType: 'HANDICAP',
+      reasons: [`El modelo le asigna un ${asianHandicap.awayProb}% de cubrir esta línea considerando su fuerza relativa.`]
     });
   }
 
-  // ─── Deep Statistical Markets via Poisson CDF ───
-  // Get stats from Monte Carlo or fallback estimation
   const stats = monteCarloSummary || {};
-  const fallback = estimateFallbackStats(xG_Home || 1.2, xG_Away || 0.9, homeStrength || 0.5, awayStrength || 0.5);
+  const avgCards = homeExt && awayExt ? (homeExt.avgYellowCards + awayExt.avgYellowCards) : (stats.avgYellowCards || 4.5);
+  const avgCorners = homeExt && awayExt ? (homeExt.avgCorners + awayExt.avgCorners)/2 : (stats.avgCorners || 9.5);
+  
+  const isDerby = h2hHistory && h2hHistory.length > 5;
+  const cardsMultiplier = isDerby ? 1.2 : 1.0;
+  const effectiveCards = avgCards * cardsMultiplier;
 
-  const avgCards = stats.avgYellowCards || fallback.yellowCards;
-  const avgCorners = stats.avgCorners || fallback.corners;
-  const avgShotsOnTarget = stats.avgShotsOnTarget || (fallback.homeShotsOnTarget + fallback.awayShotsOnTarget);
-  const avgTotalGoals = stats.avgTotalGoals || (xG_Home + xG_Away);
-  const avgOffsides = stats.avgOffsides || (fallback.homeOffsides + fallback.awayOffsides);
-
-  // Per-team estimates for shots and offsides
-  const homeSoT = fallback.homeShotsOnTarget;
-  const awaySoT = fallback.awaySoT || fallback.awayShotsOnTarget;
-  const homeShots = fallback.homeTotalShots;
-  const awayShots = fallback.awayTotalShots;
-  const homeOffsides = fallback.homeOffsides;
-  const awayOffsides = fallback.awayOffsides;
-
-  // ─── TARJETAS AMARILLAS ───
-  const cards45 = calculateLineProb(avgCards, 4.5);
-  const cards55 = calculateLineProb(avgCards, 5.5);
+  const cards45 = calculateLineProb(effectiveCards, 4.5);
+  const cards55 = calculateLineProb(effectiveCards, 5.5);
 
   if (cards45.overProb >= 55) {
-    allPicks.push({ type: 'OVER_45_CARDS', label: 'Mas de 4.5 Tarjetas Amarillas', probability: cards45.overProb, fairOdds: Number((100 / cards45.overProb).toFixed(2)), evThreshold: 'Estadistico', marketType: 'TARJETAS' });
+    allPicks.push({ type: 'OVER_45_CARDS', label: 'Mas de 4.5 Tarjetas Amarillas', probability: cards45.overProb, fairOdds: Number((100 / cards45.overProb).toFixed(2)), evThreshold: 'Estadistico', marketType: 'TARJETAS', reasons: [`El promedio combinado es ${effectiveCards.toFixed(1)} tarjetas.`, isDerby ? 'La alta rivalidad entre estos equipos suele generar partidos más friccionados.' : 'El árbitro y estilo de juego de ambos equipos favorece este mercado.'] });
   }
-  if (cards45.underProb >= 55) {
-    allPicks.push({ type: 'UNDER_45_CARDS', label: 'Menos de 4.5 Tarjetas Amarillas', probability: cards45.underProb, fairOdds: Number((100 / cards45.underProb).toFixed(2)), evThreshold: 'Estadistico', marketType: 'TARJETAS' });
-  }
-  if (cards55.overProb >= 55) {
-    allPicks.push({ type: 'OVER_55_CARDS', label: 'Mas de 5.5 Tarjetas Amarillas', probability: cards55.overProb, fairOdds: Number((100 / cards55.overProb).toFixed(2)), evThreshold: 'Estadistico', marketType: 'TARJETAS' });
-  }
-  if (cards55.underProb >= 65) {
-    allPicks.push({ type: 'UNDER_55_CARDS', label: 'Menos de 5.5 Tarjetas Amarillas', probability: cards55.underProb, fairOdds: Number((100 / cards55.underProb).toFixed(2)), evThreshold: 'Estadistico', marketType: 'TARJETAS' });
+  if (cards55.underProb >= 60) {
+    allPicks.push({ type: 'UNDER_55_CARDS', label: 'Menos de 5.5 Tarjetas Amarillas', probability: cards55.underProb, fairOdds: Number((100 / cards55.underProb).toFixed(2)), evThreshold: 'Estadistico', marketType: 'TARJETAS', reasons: ['Promedian menos de 5 tarjetas por partido. No hay historial de extrema agresividad reciente.'] });
   }
 
-  // ─── CORNERS ───
   const corners85 = calculateLineProb(avgCorners, 8.5);
   const corners95 = calculateLineProb(avgCorners, 9.5);
   const corners105 = calculateLineProb(avgCorners, 10.5);
 
   if (corners85.overProb >= 55) {
-    allPicks.push({ type: 'OVER_85_CORNERS', label: 'Mas de 8.5 Corners', probability: corners85.overProb, fairOdds: Number((100 / corners85.overProb).toFixed(2)), evThreshold: 'Estadistico', marketType: 'CORNERS' });
-  }
-  if (corners95.overProb >= 55) {
-    allPicks.push({ type: 'OVER_95_CORNERS', label: 'Mas de 9.5 Corners', probability: corners95.overProb, fairOdds: Number((100 / corners95.overProb).toFixed(2)), evThreshold: 'Estadistico', marketType: 'CORNERS' });
+    allPicks.push({ type: 'OVER_85_CORNERS', label: 'Mas de 8.5 Corners', probability: corners85.overProb, fairOdds: Number((100 / corners85.overProb).toFixed(2)), evThreshold: 'Estadistico', marketType: 'CORNERS', reasons: [`Ambos equipos tienen un alto volumen ofensivo que termina en saque de esquina (Promedio: ${avgCorners.toFixed(1)}).`] });
   }
   if (corners105.underProb >= 55) {
-    allPicks.push({ type: 'UNDER_105_CORNERS', label: 'Menos de 10.5 Corners', probability: corners105.underProb, fairOdds: Number((100 / corners105.underProb).toFixed(2)), evThreshold: 'Estadistico', marketType: 'CORNERS' });
+    allPicks.push({ type: 'UNDER_105_CORNERS', label: 'Menos de 10.5 Corners', probability: corners105.underProb, fairOdds: Number((100 / corners105.underProb).toFixed(2)), evThreshold: 'Estadistico', marketType: 'CORNERS', reasons: ['El estilo de juego de ambos prioriza el control por el centro, reduciendo los despejes a corner.'] });
   }
 
-  // ─── TIROS A PUERTA (Shots on Target) ───
-  const homeSoT35 = calculateLineProb(homeSoT, 3.5);
-  const homeSoT45 = calculateLineProb(homeSoT, 4.5);
-  const awaySoT25 = calculateLineProb(awaySoT, 2.5);
-  const awaySoT35 = calculateLineProb(awaySoT, 3.5);
-
-  if (homeSoT35.overProb >= 55) {
-    allPicks.push({ type: 'HOME_SOT_OVER_35', label: 'Local: Mas de 3.5 Tiros a Puerta', probability: homeSoT35.overProb, fairOdds: Number((100 / homeSoT35.overProb).toFixed(2)), evThreshold: 'Estadistico', marketType: 'TIROS' });
-  }
-  if (homeSoT45.overProb >= 55) {
-    allPicks.push({ type: 'HOME_SOT_OVER_45', label: 'Local: Mas de 4.5 Tiros a Puerta', probability: homeSoT45.overProb, fairOdds: Number((100 / homeSoT45.overProb).toFixed(2)), evThreshold: 'Estadistico', marketType: 'TIROS' });
-  }
-  if (awaySoT25.overProb >= 55) {
-    allPicks.push({ type: 'AWAY_SOT_OVER_25', label: 'Visitante: Mas de 2.5 Tiros a Puerta', probability: awaySoT25.overProb, fairOdds: Number((100 / awaySoT25.overProb).toFixed(2)), evThreshold: 'Estadistico', marketType: 'TIROS' });
-  }
-  if (awaySoT35.underProb >= 60) {
-    allPicks.push({ type: 'AWAY_SOT_UNDER_35', label: 'Visitante: Menos de 3.5 Tiros a Puerta', probability: awaySoT35.underProb, fairOdds: Number((100 / awaySoT35.underProb).toFixed(2)), evThreshold: 'Estadistico', marketType: 'TIROS' });
-  }
-
-  // ─── REMATES TOTALES (Total Shots) ───
-  const homeShots95 = calculateLineProb(homeShots, 9.5);
-  const awayShots75 = calculateLineProb(awayShots, 7.5);
-
-  if (homeShots95.overProb >= 58) {
-    allPicks.push({ type: 'HOME_SHOTS_OVER_95', label: 'Local: Mas de 9.5 Remates Totales', probability: homeShots95.overProb, fairOdds: Number((100 / homeShots95.overProb).toFixed(2)), evThreshold: 'Estadistico', marketType: 'TIROS' });
-  }
-  if (awayShots75.underProb >= 58) {
-    allPicks.push({ type: 'AWAY_SHOTS_UNDER_75', label: 'Visitante: Menos de 7.5 Remates Totales', probability: awayShots75.underProb, fairOdds: Number((100 / awayShots75.underProb).toFixed(2)), evThreshold: 'Estadistico', marketType: 'TIROS' });
-  }
-
-  // ─── FUERAS DE JUEGO (Offsides) ───
-  const homeOff15 = calculateLineProb(homeOffsides, 1.5);
-  const homeOff25 = calculateLineProb(homeOffsides, 2.5);
-  const awayOff15 = calculateLineProb(awayOffsides, 1.5);
-
-  if (homeOff15.overProb >= 55) {
-    allPicks.push({ type: 'HOME_OFF_OVER_15', label: 'Local: Mas de 1.5 Fueras de Juego', probability: homeOff15.overProb, fairOdds: Number((100 / homeOff15.overProb).toFixed(2)), evThreshold: 'Estadistico', marketType: 'OFFSIDES' });
-  }
-  if (homeOff25.underProb >= 60) {
-    allPicks.push({ type: 'HOME_OFF_UNDER_25', label: 'Local: Menos de 2.5 Fueras de Juego', probability: homeOff25.underProb, fairOdds: Number((100 / homeOff25.underProb).toFixed(2)), evThreshold: 'Estadistico', marketType: 'OFFSIDES' });
-  }
-  if (awayOff15.overProb >= 55) {
-    allPicks.push({ type: 'AWAY_OFF_OVER_15', label: 'Visitante: Mas de 1.5 Fueras de Juego', probability: awayOff15.overProb, fairOdds: Number((100 / awayOff15.overProb).toFixed(2)), evThreshold: 'Estadistico', marketType: 'OFFSIDES' });
-  }
-  if (awayOff15.underProb >= 60) {
-    allPicks.push({ type: 'AWAY_OFF_UNDER_15', label: 'Visitante: Menos de 1.5 Fueras de Juego', probability: awayOff15.underProb, fairOdds: Number((100 / awayOff15.underProb).toFixed(2)), evThreshold: 'Estadistico', marketType: 'OFFSIDES' });
-  }
-
-  // ─── GOLES ADICIONALES (líneas más amplias) ───
-  const goals15 = calculateLineProb(avgTotalGoals, 1.5);
-  const goals35 = calculateLineProb(avgTotalGoals, 3.5);
-
-  if (goals15.overProb >= 70) {
-    allPicks.push({ type: 'OVER_15_GOALS', label: 'Mas de 1.5 Goles', probability: goals15.overProb, fairOdds: Number((100 / goals15.overProb).toFixed(2)), evThreshold: 'Estadistico', marketType: 'GOLES' });
-  }
-  if (goals35.underProb >= 60) {
-    allPicks.push({ type: 'UNDER_35_GOALS', label: 'Menos de 3.5 Goles', probability: goals35.underProb, fairOdds: Number((100 / goals35.underProb).toFixed(2)), evThreshold: 'Estadistico', marketType: 'GOLES' });
-  }
-
-  // ─── Fallback absoluto si no hay ningun pick ───
-  if (allPicks.length === 0) {
-    const g05 = calculateLineProb(avgTotalGoals, 0.5);
-    allPicks.push({ type: 'OVER_05_GOALS', label: 'Mas de 0.5 Goles en el Partido', probability: g05.overProb, fairOdds: Number((100 / Math.max(g05.overProb, 1)).toFixed(2)), evThreshold: 'Base', marketType: 'GOLES' });
-  }
-
-  // ─── COMPETENCIA: el pick de mayor probabilidad gana sin importar la categoria ───
-  // Filter by min confidence threshold to protect Hit Rate
-  const minProb = weights.starPickMinProbability || 65;
-  const filteredPicks = allPicks.filter(p => p.probability >= minProb);
+  const betanoPicks = allPicks.filter(p => BETANO_MARKETS.includes(p.marketType));
   
-  if (filteredPicks.length === 0) {
-    return null;
+  const safe = betanoPicks.filter(p => p.probability >= 70).sort((a,b) => b.probability - a.probability);
+  const medium = betanoPicks.filter(p => p.probability >= 58 && p.probability < 70).sort((a,b) => b.probability - a.probability);
+  const risky = betanoPicks.filter(p => p.probability < 58).sort((a,b) => b.probability - a.probability);
+
+  if (safe.length === 0) {
+    const g05 = calculateLineProb(xG_Home + xG_Away, 0.5);
+    safe.push({ type: 'OVER_05_GOALS', label: 'Mas de 0.5 Goles en el Partido', probability: g05.overProb, fairOdds: Number((100 / Math.max(g05.overProb, 1)).toFixed(2)), evThreshold: 'Base', marketType: 'GOLES', reasons: ['Estadística básica para proteger un pick seguro.'] });
   }
 
-  filteredPicks.sort((a, b) => b.probability - a.probability);
+  while (safe.length < 3 && medium.length > 0) {
+    safe.push(medium.shift());
+  }
 
-  return filteredPicks[0];
+  return {
+    safe: safe.slice(0, 3),
+    medium: medium,
+    risky: risky,
+    starPick: safe[0] || null
+  };
 }
 
-/**
- * Main function to predict match probabilities and metrics
- */
-export function calculateMatchPrediction(homeStats, awayStats, h2hHistory = []) {
+
+export function calculateMatchPrediction(homeStats, awayStats, h2hHistory = [], homeExt = null, awayExt = null) {
   const weights = getWeights();
   const leagueAvgGoals = 1.38;
   const homeAdvantage = weights.homeAdvantage;
@@ -735,7 +652,7 @@ export function calculateMatchPrediction(homeStats, awayStats, h2hHistory = []) 
   const asianHandicap = calculateAsianHandicap(xG_Home, xG_Away);
 
   // Calcular la Recomendacion Estrella (Multi-Market Evaluator)
-  const starPick = getStarPick(topPredictions, asianHandicap, monteCarlo.matchSummary, xG_Home, xG_Away, homeStrength, awayStrength);
+  const matchPicks = getMatchPicks(topPredictions, asianHandicap, monteCarlo.matchSummary, xG_Home, xG_Away, homeStrength, awayStrength, homeExt, awayExt, h2hHistory);
 
   return {
     probabilities: {
@@ -759,7 +676,7 @@ export function calculateMatchPrediction(homeStats, awayStats, h2hHistory = []) 
     fairOdds,
     topPredictions,
     asianHandicap,
-    starPick,
+    matchPicks,
     monteCarlo,
     calculatedAt: new Date().toISOString(),
   };

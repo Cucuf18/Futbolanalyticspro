@@ -1,5 +1,6 @@
 import { config } from '../config.js';
 import { calculateMatchPrediction } from './predictorEngine.js';
+import { getTeamStats } from './externalDataAggregator.js';
 
 /* ──────────────────────────────────────────────────────
    In-memory cache with TTL (Time To Live)
@@ -445,7 +446,13 @@ export async function getMatchPredictionDetails(homeTeamId, awayTeamId, leagueId
   const homeTeam = standings.teams.find((t) => t.id === Number(homeTeamId)) || standings.teams[0];
   const awayTeam = standings.teams.find((t) => t.id === Number(awayTeamId)) || standings.teams[1];
   const h2h = await getH2HHistory(homeTeamId, awayTeamId, leagueId);
-  const prediction = calculateMatchPrediction(homeTeam, awayTeam, h2h.matches);
+  
+  // Use '39' for PL as default in api-football
+  const externalLeagueId = leagueId === 'PL' ? '39' : (leagueId === 'PD' ? '140' : (leagueId === 'SA' ? '135' : (leagueId === 'BL1' ? '78' : '39')));
+  const homeExternalStats = await getTeamStats(homeTeamId, externalLeagueId, '2024');
+  const awayExternalStats = await getTeamStats(awayTeamId, externalLeagueId, '2024');
+  
+  const prediction = calculateMatchPrediction(homeTeam, awayTeam, h2h.matches, homeExternalStats, awayExternalStats);
 
   return {
     matchInfo: { league: standings.league, homeTeam, awayTeam },

@@ -6,6 +6,7 @@ import fs from 'fs';
 import { config } from './config.js';
 import { getLeagueStandings, getH2HHistory, getMatchPredictionDetails } from './services/sportsApi.js';
 import { learn, getWeights } from './services/weightOptimizer.js';
+import { getTeamStats } from './services/externalDataAggregator.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -59,6 +60,18 @@ app.get('/api/predict/:homeId/:awayId', async (req, res) => {
     const leagueId = req.query.leagueId || 'PL';
     const details = await getMatchPredictionDetails(homeId, awayId, leagueId);
     res.json({ success: true, data: details });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Get team external stats from api-football
+app.get('/api/team-stats/:teamId', async (req, res) => {
+  try {
+    const { teamId } = req.params;
+    const leagueId = req.query.leagueId || '39'; // Default PL
+    const stats = await getTeamStats(teamId, leagueId, '2024');
+    res.json({ success: true, data: stats });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }

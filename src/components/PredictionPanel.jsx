@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { useBetSlip } from '../context/BetSlipContext';
 import DepthMetrics from './DepthMetrics';
-import MatchStarPick from './MatchStarPick';
+import MatchPicks from './MatchPicks';
 
 export default function PredictionPanel({ predictionData, isPremium, onOpenPremiumModal }) {
   const { addToSlip } = useBetSlip();
@@ -19,7 +19,7 @@ export default function PredictionPanel({ predictionData, isPremium, onOpenPremi
     fairOdds = {}, 
     topPredictions = [], 
     confidenceScore = 0, 
-    starPick = null 
+    matchPicks = null 
   } = prediction || {};
 
   // Match Summary stats from Monte Carlo
@@ -75,8 +75,8 @@ export default function PredictionPanel({ predictionData, isPremium, onOpenPremi
         transition: 'var(--transition-smooth)',
       }}>
 
-        {/* ========== STAR PICK SECTION ========== */}
-        <MatchStarPick starPick={starPick} matchInfo={matchInfo} />
+        {/* ========== MATCH PICKS SECTION ========== */}
+        <MatchPicks matchPicks={matchPicks} matchInfo={matchInfo} />
 
         {/* ========== MATCH SUMMARY SECTION ========== */}
         {summary && (
