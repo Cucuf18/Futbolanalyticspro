@@ -18,6 +18,10 @@ import {
   priceSelection,
   calibrateForMarket,
   isVerifiedMarket,
+  teamGoalsLineProbability,
+  RESULTADO_MIN_RAW,
+  isIndependentEnough,
+  correlationBetween,
   buildCountPick,
   distinctivenessFromProb,
   MIN_USEFUL_ODDS,
@@ -308,7 +312,9 @@ function buildCandidatePicks(ctx) {
   };
   const dcProb = (key) => calibrateForMarket(dcRaw[key], dataQuality, 'DOBLE');
 
-  if (pHome >= 55) {
+  // Solo se propone el 1X2 cuando el modelo esta muy convencido: por
+  // debajo del umbral medido no tiene ninguna ventaja demostrada.
+  if (probs.homeWin >= RESULTADO_MIN_RAW && pHome >= 60) {
     push({
       type: 'HOME_WIN',
       label: `Victoria Local (${homeStats.name})`,
@@ -326,7 +332,7 @@ function buildCandidatePicks(ctx) {
       ],
     });
   }
-  if (pAway >= 52) {
+  if (probs.awayWin >= RESULTADO_MIN_RAW && pAway >= 60) {
     push({
       type: 'AWAY_WIN',
       label: `Victoria Visitante (${awayStats.name})`,
@@ -414,6 +420,7 @@ function buildCandidatePicks(ctx) {
     leagueBaseline: leagueProfile.goalsPerTeam * 2,
     profile: leagueProfile,
     settle: goalsFound ? { kind: 'GOALS_TOTAL', side: goalsFound.side, line: goalsFound.line } : null,
+    correlationGroup: 'GOLES_TOTAL',
     labelFor: (f) => `${sideWord(f.side)} ${f.line} Goles en el Partido`,
     reasons: goalsFound ? [`Goles esperados en este cruce: ${totalXG.toFixed(2)} (${homeName} ${xG_Home.toFixed(2)} - ${xG_Away.toFixed(2)} ${awayName}).`] : [],
   }));
@@ -439,11 +446,40 @@ function buildCandidatePicks(ctx) {
         distinctiveness: distinctivenessFromProb(prob, BASE_RATES.SCORES),
         selectionScore: prob + distinctivenessFromProb(prob, BASE_RATES.SCORES),
         marketType: 'GOLES',
-        correlationGroup: 'GOLES',
+        correlationGroup: t.key === 'HOME' ? 'GOLES_LOCAL' : 'GOLES_VISITA',
         evThreshold: 'Estadistico',
         reasons: [`xG de ${t.name} en este partido: ${t.xg.toFixed(2)}.`],
       });
     }
+  });
+
+  /* ─── GOLES POR EQUIPO (linea dinamica) ───────────────────────────
+     Mercado propio de las casas y, al deducirse del marcador, uno de los
+     pocos que se puede verificar contra resultados reales.            */
+  [
+    { name: homeName, side: 'HOME', xg: xG_Home },
+    { name: awayName, side: 'AWAY', xg: xG_Away },
+  ].forEach((t) => {
+    const found = findBestLine({
+      mean: t.xg,
+      dispersion: disp.goals,
+      dataQuality,
+      band,
+      marketType: 'GOLES',
+      directionalHint: hint(t.xg, leagueProfile.goalsPerTeam),
+      probabilityFn: (line) => teamGoalsLineProbability(scoreMatrix, line, t.side),
+    });
+    push(buildCountPick({
+      marketType: 'GOLES',
+      typePrefix: `${t.side}_GOALS`,
+      found,
+      profile: leagueProfile,
+      correlationGroup: t.side === 'HOME' ? 'GOLES_LOCAL' : 'GOLES_VISITA',
+      leagueBaseline: leagueProfile.goalsPerTeam,
+      settle: found ? { kind: 'TEAM_GOALS', side: t.side, line: found.line, over: found.side === 'OVER' } : null,
+      labelFor: (f) => `${t.name}: ${sideWord(f.side)} ${f.line} Goles`,
+      reasons: found ? [`Goles esperados de ${t.name} en este partido: ${t.xg.toFixed(2)}.`] : [],
+    }));
   });
 
   /* ─── BTTS ────────────────────────────────────────────────────── */
@@ -459,7 +495,7 @@ function buildCandidatePicks(ctx) {
       probability: bttsSide.prob,
       rawProbability: bttsSide.raw,
       marketType: 'BTTS',
-      correlationGroup: 'GOLES',
+      correlationGroup: 'GOLES_TOTAL',
       settle: { kind: 'BTTS', side: bttsProb >= bttsNoProb ? 'YES' : 'NO' },
       distinctiveness: distinctivenessFromProb(bttsSide.prob, BASE_RATES.BTTS),
       selectionScore: bttsSide.prob + getSignatureBonus(leagueProfile, 'BTTS') + distinctivenessFromProb(bttsSide.prob, BASE_RATES.BTTS),
@@ -608,28 +644,31 @@ function organizePicks(candidates, weights) {
   });
   const all = [...byType.values()].sort((a, b) => b.selectionScore - a.selectionScore);
 
-  const usedGroups = new Set();
   const safe = [];
 
-  // Pasada 0: se reserva un hueco para el mejor pick de un mercado
-  // VERIFICADO, es decir, uno cuyo acierto real se ha comprobado contra
-  // resultados. Sin esta reserva los tres picks seguros acababan siendo
-  // de corners, tiros y offsides: mercados que ninguna API gratuita
-  // permite comprobar, asi que no hay ninguna prueba de que funcionen.
-  const bestVerified = all.find((p) => p.verified && p.probability >= Math.min(safeMin, 65));
-  if (bestVerified) {
-    safe.push(bestVerified);
-    usedGroups.add(bestVerified.correlationGroup);
+  // Pasada 0: se reservan hasta DOS huecos para mercados VERIFICADOS, es
+  // decir, aquellos cuyo acierto real se ha comprobado contra resultados.
+  // Sin esta reserva los tres picks seguros acababan siendo de corners,
+  // tiros y offsides, que ninguna API gratuita permite comprobar.
+  //
+  // El segundo solo entra si es una apuesta de verdad distinta: los goles
+  // del local y los del visitante son casi independientes entre si, pero
+  // ninguno lo es respecto al total de goles.
+  for (const p of all) {
+    if (safe.filter((x) => x.verified).length >= 2) break;
+    if (!p.verified) continue;
+    if (p.probability < Math.min(safeMin, 65)) continue;
+    if (!isIndependentEnough(p, safe)) continue;
+    safe.push(p);
   }
 
-  // Pasada 1: el mejor pick de cada grupo que supere el umbral seguro
+  // Pasada 1: el mejor pick que supere el umbral seguro y no repita riesgo
   for (const p of all) {
     if (safe.length >= 3) break;
     if (safe.includes(p)) continue;
     if (p.probability < safeMin) continue;
-    if (usedGroups.has(p.correlationGroup)) continue;
+    if (!isIndependentEnough(p, safe)) continue;
     safe.push(p);
-    usedGroups.add(p.correlationGroup);
   }
 
   // Pasada 2: si faltan, se relaja el umbral progresivamente pero SIEMPRE
@@ -639,9 +678,8 @@ function organizePicks(candidates, weights) {
       if (safe.length >= 3) break;
       if (safe.includes(p)) continue;
       if (p.probability < relaxed) continue;
-      if (usedGroups.has(p.correlationGroup)) continue;
+      if (!isIndependentEnough(p, safe)) continue;
       safe.push(p);
-      usedGroups.add(p.correlationGroup);
     }
   }
 

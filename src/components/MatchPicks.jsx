@@ -188,10 +188,12 @@ export default function MatchPicks({ matchPicks, matchInfo, dataQuality, leagueT
 
   const currentPicks = matchPicks[activeTab] || [];
 
-  // Aviso de correlacion: dos picks del mismo grupo suben y bajan juntos,
-  // asi que combinarlos multiplica el riesgo en vez de repartirlo.
+  // Aviso de correlacion. Ya no basta con comparar el nombre del grupo:
+  // el servidor manda cuanto se parecen dos picks, porque "goles del
+  // local" y "goles del visitante" comparten familia pero son apuestas
+  // practicamente independientes.
   const groups = currentPicks.map((p) => p.correlationGroup || p.marketType);
-  const hasCorrelation = new Set(groups).size < groups.length;
+  const hasCorrelation = groups.some((g, i) => groups.indexOf(g) !== i);
 
   const lowData = typeof dataQuality === 'number' && dataQuality < 0.45;
 

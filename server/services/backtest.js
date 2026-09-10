@@ -146,6 +146,11 @@ export function gradePick(settle, homeGoals, awayGoals) {
       return settle.side === 'YES' ? both : !both;
     }
 
+    case 'TEAM_GOALS': {
+      const goals = settle.side === 'HOME' ? homeGoals : awayGoals;
+      return settle.over ? goals > settle.line : goals < settle.line;
+    }
+
     case 'TEAM_SCORES':
       return settle.side === 'HOME' ? homeGoals > 0 : awayGoals > 0;
 

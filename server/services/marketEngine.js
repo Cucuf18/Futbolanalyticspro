@@ -158,6 +158,16 @@ export function summarizeMatrix(matrix) {
   return { homeWin, draw, awayWin, btts, mostLikely: best };
 }
 
+/**
+ * Probabilidad Over/Under de los goles de UN equipo, derivada de la
+ * matriz. Es un mercado que las casas ofrecen aparte y, al deducirse del
+ * marcador final, se puede verificar en el backtest.
+ */
+export function teamGoalsLineProbability(matrix, line, side) {
+  const over = matrixProbability(matrix, (h, a) => (side === 'HOME' ? h : a) > line);
+  return { overProb: over, underProb: 1 - over };
+}
+
 /** Probabilidad Over/Under de goles totales, derivada de la matriz. */
 export function goalsLineProbability(matrix, line) {
   const over = matrixProbability(matrix, (h, a) => h + a > line);
@@ -276,8 +286,19 @@ export const MARKET_CALIBRATION = {
   GOLES: 0.99,
   DOBLE: 0.78,
   BTTS: 0.20,
+  // El handicap no esta mal calibrado: esta roto. Cuando la linea llega
+  // al tope de +/-2.5 en un cruce muy desigual, el modelo dice 64% de
+  // cubrir y se cumple el 19% de las veces, peor que el azar. Se anula
+  // hasta entender por que.
   HANDICAP: 0.00,
-  RESULTADO: 0.00,
+  // El resultado 1X2 SI tiene senal, pero solo cuando el modelo esta muy
+  // convencido. Medido por tramos sobre 3.095 partidos:
+  //   dice 55% -> acierta 45%     dice 85% -> acierta 60%
+  //   dice 64% -> acierta 51%     dice 94% -> acierta 73%
+  // En la zona media no vale nada; en la alta si (73% frente a una tasa
+  // base del 44%). Por eso ademas de encogerlo se le exige un minimo de
+  // confianza cruda, ver RESULTADO_MIN_RAW.
+  RESULTADO: 0.55,
   // Sin medir: ninguna API gratuita da corners, tarjetas, faltas, tiros
   // ni offsides por partido, asi que no se pueden verificar. Se les
   // aplica un factor prudente por defecto y se marcan como no
@@ -288,6 +309,10 @@ export const MARKET_CALIBRATION = {
   TIROS: 0.85,
   OFFSIDES: 0.85,
 };
+
+// Confianza cruda minima para que el 1X2 se considere siquiera. Por
+// debajo de esto el modelo no demostro ninguna ventaja sobre el azar.
+export const RESULTADO_MIN_RAW = 88;
 
 // Mercados cuyo rendimiento se ha podido comprobar contra resultados reales.
 export const VERIFIED_MARKETS = new Set(['GOLES', 'DOBLE', 'BTTS', 'HANDICAP', 'RESULTADO']);
@@ -305,6 +330,58 @@ export function calibrateForMarket(rawPct, dataQuality, marketType) {
   const byData = calibrate(rawPct, dataQuality);
   const k = MARKET_CALIBRATION[marketType] ?? 0.85;
   return Math.round(clamp(50 + (byData - 50) * k, 3, 93));
+}
+
+/**
+ * CORRELACION ENTRE FAMILIAS DE MERCADO
+ * ------------------------------------------------------------------
+ * Antes bastaba con que dos picks compartieran "grupo" para considerarlos
+ * el mismo riesgo. Eso agrupaba mal los goles: metia en el mismo saco
+ * "mas de 2.5 goles en el partido" y "el visitante marca mas de 0.5",
+ * cuando bajo el propio modelo los goles del local y los del visitante
+ * son CASI INDEPENDIENTES (solo los une el rho de Dixon-Coles, que es
+ * pequeno).
+ *
+ * Consecuencia practica: se descartaba un segundo pick de goles que si
+ * era una apuesta distinta, y los huecos acababan en corners y offsides,
+ * que son justo los mercados que no se pueden verificar.
+ *
+ * 0 = independientes, 1 = practicamente la misma apuesta.
+ * Los valores son estimaciones razonadas, no medidas: sirven para
+ * ordenar y para avisar, no entran en ningun calculo de probabilidad.
+ */
+const CORRELATION = {
+  'GOLES_TOTAL|GOLES_LOCAL': 0.60,
+  'GOLES_TOTAL|GOLES_VISITA': 0.60,
+  'GOLES_LOCAL|GOLES_VISITA': 0.15,
+  'RESULTADO|GOLES_LOCAL': 0.45,
+  'RESULTADO|GOLES_VISITA': 0.45,
+  'RESULTADO|GOLES_TOTAL': 0.20,
+  'CORNERS|TIROS': 0.55,
+  'CORNERS|GOLES_TOTAL': 0.25,
+  'CORNERS|GOLES_LOCAL': 0.20,
+  'CORNERS|GOLES_VISITA': 0.20,
+  'TIROS|GOLES_TOTAL': 0.30,
+  'TIROS|GOLES_LOCAL': 0.25,
+  'TIROS|GOLES_VISITA': 0.25,
+  'TARJETAS|FALTAS': 0.65,
+  'TARJETAS|RESULTADO': 0.15,
+  'FALTAS|RESULTADO': 0.15,
+};
+
+// Por encima de esto dos picks se consideran la misma apuesta y no
+// pueden ocupar dos huecos de los tres picks seguros.
+export const CORRELATION_LIMIT = 0.40;
+
+export function correlationBetween(groupA, groupB) {
+  if (!groupA || !groupB) return 0;
+  if (groupA === groupB) return 1;
+  return CORRELATION[`${groupA}|${groupB}`] ?? CORRELATION[`${groupB}|${groupA}`] ?? 0.10;
+}
+
+/** true si el pick puede convivir con los ya elegidos. */
+export function isIndependentEnough(pick, chosen, limit = CORRELATION_LIMIT) {
+  return chosen.every((c) => correlationBetween(pick.correlationGroup, c.correlationGroup) < limit);
 }
 
 /**
