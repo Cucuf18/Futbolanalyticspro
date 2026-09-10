@@ -378,6 +378,9 @@ function buildCandidatePicks(ctx) {
   });
 
   /* ─── HANDICAP ASIATICO ───────────────────────────────────────── */
+  // El handicap vuelve a estar activo: estaba anulado porque decia 64%
+  // de cubrir y se cumplia el 19%, pero la causa era el xG inflado, no
+  // el mercado. Corregido aquel sesgo, calibra bien.
   if (asianHandicap.homeProb >= 55 || asianHandicap.awayProb >= 55) {
     const isHome = asianHandicap.homeProb >= asianHandicap.awayProb;
     const prob = calibrateForMarket(isHome ? asianHandicap.homeProb : asianHandicap.awayProb, dataQuality, 'HANDICAP');
@@ -868,6 +871,37 @@ export function calculateMatchPrediction(
     base_xG_Home *= shift;
     base_xG_Away /= shift;
   }
+
+  /**
+   * CORRECCION DE REGRESION DEL xG
+   * ----------------------------------------------------------------
+   * El esquema ataque x defensa multiplica dos ratios, y en un cruce
+   * desigual eso se dispara: el modelo llegaba a predecir 3.83 goles
+   * para el local cuando la realidad eran 2.11.
+   *
+   * Medido sobre 3.095 partidos con scripts/diagnose-handicap.mjs,
+   * regresando los goles reales sobre el xG predicho:
+   *
+   *   xG predicho   goles reales
+   *      0.71          1.08
+   *      1.74          1.45
+   *      2.75          1.80
+   *      3.83          2.11
+   *
+   * La pendiente sale 0.31, no 1.0: el modelo exagera las diferencias
+   * unas tres veces. Aqui se encoge la desviacion respecto a la media
+   * de la liga por ese factor.
+   *
+   * Esto afecta a TODOS los mercados, no solo al handicap: el handicap
+   * era simplemente el unico que lo dejaba a la vista, porque apostar a
+   * "gana por 3+" castiga el error mucho mas que un Over/Under.
+   */
+  const XG_REGRESSION = 0.31;
+  const leagueMeanGoals = leagueProfile.goalsPerTeam;
+  const shrinkToMean = (xg) => leagueMeanGoals + XG_REGRESSION * (xg - leagueMeanGoals);
+
+  base_xG_Home = shrinkToMean(base_xG_Home);
+  base_xG_Away = shrinkToMean(base_xG_Away);
 
   let xG_Home = Math.max(0.35, base_xG_Home);
   let xG_Away = Math.max(0.25, base_xG_Away);

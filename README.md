@@ -154,22 +154,53 @@ Lo que importa del informe no es el acierto global sino la **curva de
 calibración**: cuando el modelo dice 75%, ¿acierta el 75%? Un modelo que promete
 80% y cumple 60% no sirve aunque gane más de la mitad.
 
-### Resultado medido (7.007 picks, 9 ligas)
+### El sesgo del xG (el hallazgo más importante)
 
-| Mercado | Prometía | Acertaba | Señal |
+La primera tanda de medidas decía que RESULTADO y HANDICAP no servían: prometían
+un 64% y acertaban un 46%. Parecía que había que anularlos.
+
+Era un diagnóstico equivocado. `scripts/diagnose-handicap.mjs` comparó el xG
+predicho con los goles reales:
+
+| xG predicho al local | goles reales | error |
+|---|---|---|
+| 0.71 | 1.08 | −0.38 |
+| 1.74 | 1.45 | +0.29 |
+| 2.75 | 1.80 | +0.95 |
+| 3.83 | 2.11 | **+1.72** |
+
+El esquema ataque × defensa multiplica dos ratios, y en cruces desiguales se
+disparaba. La pendiente real de la regresión era **0.31**, no 1.0: el modelo
+exageraba las diferencias unas tres veces.
+
+No eran mercados malos, era el xG roto. El hándicap solo era el único que lo
+dejaba a la vista, porque apostar a "gana por 3+" castiga ese error mucho más
+que un Over/Under.
+
+Corregido con `XG_REGRESSION` en `predictorEngine.js`:
+
+| | antes | después |
+|---|---|---|
+| Error del xG en cruces desiguales | +1.72 | +0.38 |
+| Error en diferencia de goles | +1.88 | ±0.36 |
+| Hándicap: dice 55-65% | cubría 45.7% | **cubre 57.9%** |
+| Hándicap: dice 65%+ | cubría **27.1%** | ese tramo ya no aparece |
+
+### Resultado final (16.742 picks, 9 ligas)
+
+| Mercado | Dice | Acierta | Desvío |
 |---|---|---|---|
-| GOLES | 72.0% | 71.8% | buena |
-| DOBLE | 76.0% | 70.2% | buena |
-| BTTS | 70.9% | 53.5% | muy débil |
-| HANDICAP | 59.9% | 49.1% | nula |
-| RESULTADO | 64.3% | 45.9% | nula |
+| GOLES | 74.2% | 74.3% | −0.2 |
+| HANDICAP | 55.8% | 55.5% | +0.3 |
+| DOBLE | 73.1% | 74.3% | −1.2 |
+| RESULTADO | 70.7% | 78.9% | −8.2 (muestra pequeña) |
 
-De ahí salen los coeficientes de `MARKET_CALIBRATION` en `marketEngine.js`.
-Los mercados sin señal se encogen a k = 0, con lo que su probabilidad colapsa
-al 50% y dejan de superar el umbral: **desaparecen solos**.
+**Global: acierto real 73.5% frente al 73.0% anunciado.** Todos los tramos de la
+curva dentro de 3 puntos. ROI del −13.9% inicial al −4.6%.
 
-Tras aplicarlo: acierto real **70.3%** frente al **69.9%** anunciado — desvío de
-0.4 puntos. Antes eran 5.7.
+Los coeficientes de `MARKET_CALIBRATION` salen de aquí. Fíjate en que el
+hándicap se queda en 1.00 mientras goles y doble van a 1.15: por eso el
+coeficiente es **por mercado** y no global.
 
 **Vuelve a correr el backtest después de tocar el motor y actualiza la tabla de
 coeficientes con lo que salga.** Es el único modo de saber si un cambio mejora

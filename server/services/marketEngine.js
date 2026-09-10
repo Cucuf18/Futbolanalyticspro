@@ -283,22 +283,35 @@ export function calibrate(rawPct, dataQuality = 0.5) {
  * actualiza esta tabla con lo que salga.
  */
 export const MARKET_CALIBRATION = {
-  GOLES: 0.99,
-  DOBLE: 0.78,
-  BTTS: 0.20,
-  // El handicap no esta mal calibrado: esta roto. Cuando la linea llega
-  // al tope de +/-2.5 en un cruce muy desigual, el modelo dice 64% de
-  // cubrir y se cumple el 19% de las veces, peor que el azar. Se anula
-  // hasta entender por que.
-  HANDICAP: 0.00,
-  // El resultado 1X2 SI tiene senal, pero solo cuando el modelo esta muy
-  // convencido. Medido por tramos sobre 3.095 partidos:
-  //   dice 55% -> acierta 45%     dice 85% -> acierta 60%
-  //   dice 64% -> acierta 51%     dice 94% -> acierta 73%
-  // En la zona media no vale nada; en la alta si (73% frente a una tasa
-  // base del 44%). Por eso ademas de encogerlo se le exige un minimo de
-  // confianza cruda, ver RESULTADO_MIN_RAW.
-  RESULTADO: 0.55,
+  // Medido de nuevo DESPUES de corregir el sesgo del xG. Los valores
+  // anteriores (RESULTADO 0.00, HANDICAP 0.00, BTTS 0.20) se habian
+  // ajustado sobre un modelo que exageraba las diferencias unas tres
+  // veces: no median que esos mercados fueran malos, median que el xG
+  // estaba roto. Corregido el xG, casi todos quedan bien calibrados o
+  // incluso algo conservadores:
+  //
+  //   mercado          dice   acierta
+  //   RESULTADO local   64%     71%
+  //   RESULTADO local   73%     81%
+  //   DOBLE 1X          74%     78%
+  //   DOBLE 1X          83%     88%
+  //   HANDICAP local    54%     56%
+  //   BTTS si           63%     59%
+  //
+  // Se dejan en 1.00 los que salen conservadores en lugar de subirlos
+  // por encima de 1: amplificar la confianza a partir de muestras de
+  // unos cientos de partidos es como se llega a un modelo sobreconfiado.
+  // Segunda pasada sobre 14.358 picks: con k = 1.00 estos tres se
+  // quedaban CORTOS unos 3.5 puntos (decian 72% y acertaban 75.5%).
+  // El handicap en cambio calibraba clavado, asi que se deja en 1.00:
+  // por eso el coeficiente es por mercado y no global.
+  GOLES: 1.15,
+  DOBLE: 1.15,
+  HANDICAP: 1.00,
+  // Muestra pequena todavia (83 picks): se corrige a medias a proposito.
+  RESULTADO: 1.10,
+  // El unico que sigue prometiendo de mas.
+  BTTS: 0.77,
   // Sin medir: ninguna API gratuita da corners, tarjetas, faltas, tiros
   // ni offsides por partido, asi que no se pueden verificar. Se les
   // aplica un factor prudente por defecto y se marcan como no
@@ -310,9 +323,10 @@ export const MARKET_CALIBRATION = {
   OFFSIDES: 0.85,
 };
 
-// Confianza cruda minima para que el 1X2 se considere siquiera. Por
-// debajo de esto el modelo no demostro ninguna ventaja sobre el azar.
-export const RESULTADO_MIN_RAW = 88;
+// Confianza cruda minima para proponer un 1X2. Llego a estar en 88
+// porque el mercado parecia inservible; corregido el sesgo del xG
+// rinde bien desde mucho antes, asi que basta un filtro suave.
+export const RESULTADO_MIN_RAW = 55;
 
 // Mercados cuyo rendimiento se ha podido comprobar contra resultados reales.
 export const VERIFIED_MARKETS = new Set(['GOLES', 'DOBLE', 'BTTS', 'HANDICAP', 'RESULTADO']);
