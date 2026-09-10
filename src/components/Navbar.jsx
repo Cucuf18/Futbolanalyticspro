@@ -7,8 +7,8 @@ export default function Navbar({ isPremium, onTogglePremium, onOpenPremiumModal,
   const isCombinadas = location.pathname === '/combinadas';
 
   return (
-    <header className="glass-card" style={{ borderRadius: 0, borderTop: 'none', borderLeft: 'none', borderRight: 'none', padding: '14px 24px', position: 'sticky', top: 0, zIndex: 100 }}>
-      <div style={{ maxWidth: '1280px', margin: '0 auto', display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '16px' }}>
+    <header className="glass-card" style={{ borderRadius: 0, borderTop: 'none', borderLeft: 'none', borderRight: 'none', padding: '14px clamp(16px, 2.5vw, 56px)', position: 'sticky', top: 0, zIndex: 100 }}>
+      <div style={{ width: '100%', margin: 0, display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '16px' }}>
         
         {/* Brand & Navigation */}
         <div style={{ display: 'flex', alignItems: 'center', gap: '32px' }}>

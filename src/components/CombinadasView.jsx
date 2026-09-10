@@ -6,6 +6,7 @@ export default function CombinadasView() {
   const { slip, history, removeFromSlip, clearSlip, settleBet, clearHistory } = useBetSlip();
   const navigate = useNavigate();
   const [modelWeights, setModelWeights] = useState(null);
+  const [marketReport, setMarketReport] = useState([]);
 
   // Load current weights for transparency/debug
   useEffect(() => {
@@ -17,6 +18,13 @@ export default function CombinadasView() {
         }
       })
       .catch(err => console.error('Error fetching engine weights:', err));
+
+    fetch('/api/market-report')
+      .then(res => res.json())
+      .then(data => {
+        if (data.success) setMarketReport(data.markets || []);
+      })
+      .catch(err => console.error('Error fetching market report:', err));
   }, [history]);
 
   const totalBets = history.length;
@@ -54,7 +62,7 @@ export default function CombinadasView() {
         </button>
       </div>
 
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '32px', alignItems: 'start' }}>
+      <div className="full-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(min(420px, 100%), 1fr))', gap: '28px', alignItems: 'start' }}>
         {/* LEFT COLUMN: ACTIVE COMBINADA */}
         <div className="glass-card" style={{ padding: '28px', minHeight: '450px', display: 'flex', flexDirection: 'column' }}>
           <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
@@ -233,9 +241,65 @@ export default function CombinadasView() {
                     {modelWeights.h2hBaseWeight?.toFixed(3)}
                   </div>
                 </div>
+                <div style={{ background: 'rgba(255,255,255,0.02)', padding: '12px', borderRadius: '10px', border: '1px solid var(--glass-border)' }}>
+                  <div style={{ fontSize: '10px', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Umbral Seguro</div>
+                  <div style={{ fontSize: '18px', fontWeight: 800, color: 'var(--accent-green)', marginTop: '4px' }}>
+                    {Math.round(modelWeights.safeThreshold ?? 70)}%
+                  </div>
+                </div>
+                <div style={{ background: 'rgba(255,255,255,0.02)', padding: '12px', borderRadius: '10px', border: '1px solid var(--glass-border)' }}>
+                  <div style={{ fontSize: '10px', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Umbral Medio</div>
+                  <div style={{ fontSize: '18px', fontWeight: 800, color: 'var(--accent-gold)', marginTop: '4px' }}>
+                    {Math.round(modelWeights.mediumThreshold ?? 58)}%
+                  </div>
+                </div>
               </div>
             ) : (
               <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>Cargando parametros del modelo...</div>
+            )}
+          </div>
+
+          {/* Rendimiento real por mercado */}
+          <div className="glass-card" style={{ padding: '28px' }}>
+            <h3 style={{ fontSize: '18px', fontWeight: 800, color: 'var(--accent-green)', marginBottom: '8px' }}>
+              Aciertos por Mercado
+            </h3>
+            <p style={{ fontSize: '13px', color: 'var(--text-secondary)', marginBottom: '18px', lineHeight: 1.5 }}>
+              El motor registra que mercados te funcionan de verdad y los prioriza al elegir los picks
+              seguros. Hacen falta al menos 8 resoluciones en un mercado para que empiece a pesar.
+            </p>
+
+            {marketReport.length === 0 ? (
+              <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
+                Aun no hay picks resueltos. Marca tus apuestas como acertadas o falladas para
+                que el motor aprenda.
+              </div>
+            ) : (
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                {marketReport.map((m) => {
+                  const active = m.total >= 8;
+                  const color = m.hitRate >= 60 ? 'var(--accent-green)' : m.hitRate >= 45 ? 'var(--accent-gold)' : 'var(--accent-red)';
+                  return (
+                    <div key={m.market} style={{
+                      display: 'flex', alignItems: 'center', gap: '12px',
+                      padding: '10px 14px', borderRadius: '10px',
+                      background: 'rgba(255,255,255,0.02)',
+                      border: '1px solid var(--glass-border)',
+                    }}>
+                      <div style={{ fontSize: '12px', fontWeight: 800, minWidth: '90px' }}>{m.market}</div>
+                      <div style={{ flex: 1, height: '6px', background: 'rgba(255,255,255,0.06)', borderRadius: '3px', overflow: 'hidden' }}>
+                        <div style={{ width: m.hitRate + '%', height: '100%', background: color }} />
+                      </div>
+                      <div style={{ fontSize: '12px', fontWeight: 800, color, minWidth: '48px', textAlign: 'right' }}>
+                        {m.hitRate}%
+                      </div>
+                      <div style={{ fontSize: '10px', color: 'var(--text-muted)', minWidth: '70px', textAlign: 'right' }}>
+                        {m.won}-{m.lost} {active ? '' : '(pocos datos)'}
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
             )}
           </div>
 

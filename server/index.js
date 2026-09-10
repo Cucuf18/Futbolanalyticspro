@@ -5,7 +5,7 @@ import { fileURLToPath } from 'url';
 import fs from 'fs';
 import { config } from './config.js';
 import { getLeagueStandings, getH2HHistory, getMatchPredictionDetails } from './services/sportsApi.js';
-import { learn, getWeights } from './services/weightOptimizer.js';
+import { learn, getWeights, getMarketReport } from './services/weightOptimizer.js';
 import { getTeamStats } from './services/externalDataAggregator.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -83,6 +83,15 @@ app.post('/api/learn', (req, res) => {
     const { history } = req.body;
     const updatedWeights = learn(history);
     res.json({ success: true, weights: updatedWeights });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Rendimiento historico por mercado (que mercados aciertan de verdad)
+app.get('/api/market-report', (req, res) => {
+  try {
+    res.json({ success: true, markets: getMarketReport() });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }

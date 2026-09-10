@@ -1,6 +1,6 @@
 import { config } from '../config.js';
 import { calculateMatchPrediction } from './predictorEngine.js';
-import { getTeamStats } from './externalDataAggregator.js';
+import { getTeamStats, currentSeason } from './externalDataAggregator.js';
 
 /* ──────────────────────────────────────────────────────
    In-memory cache with TTL (Time To Live)
@@ -9,23 +9,42 @@ import { getTeamStats } from './externalDataAggregator.js';
 const cache = new Map();
 const STANDINGS_TTL = 60 * 60 * 1000; // 1 hour
 
-// Genera una fecha aleatoria entre 2 y 7 días en el pasado para pruebas de fatiga
-function generateRandomRecentDate() {
-  const daysAgo = Math.floor(Math.random() * 6) + 2; // 2 a 7
-  const d = new Date();
-  d.setDate(d.getDate() - daysAgo);
-  return d.toISOString();
+// Codigo de competicion en api-football (v3)
+const API_FOOTBALL_LEAGUE_IDS = {
+  PL: '39',   // Premier League
+  PD: '140',  // La Liga
+  SA: '135',  // Serie A
+  BL1: '78',  // Bundesliga
+  CL: '2',    // UEFA Champions League
+};
+
+/**
+ * Fecha del ultimo partido para el calculo de fatiga.
+ *
+ * Antes esto devolvia una fecha ALEATORIA entre 2 y 7 dias atras, y se
+ * usaba tambien con datos en vivo: la penalizacion por fatiga (-10% de
+ * xG cuando hay menos de 4 dias de descanso) se aplicaba o no al azar en
+ * cada recarga, metiendo ruido puro en la prediccion.
+ *
+ * Sin un calendario real es preferible no ajustar nada: devolvemos null
+ * y el motor deja el multiplicador de fatiga en 1.0.
+ */
+function unknownLastMatchDate() {
+  return null;
 }
 
 function getCached(key) {
   const entry = cache.get(key);
-  if (entry && Date.now() - entry.ts < STANDINGS_TTL) return entry.data;
+  if (entry && Date.now() - entry.ts < entry.ttl) return entry.data;
   cache.delete(key);
   return null;
 }
 
-function setCache(key, data) {
-  cache.set(key, { data, ts: Date.now() });
+// El TTL es por entrada: antes setCache aceptaba 2 argumentos y la
+// llamada de partidos le pasaba 86400 como tercero, que se descartaba
+// en silencio (esa cache expiraba en 1h, no en 24h).
+function setCache(key, data, ttlMs = STANDINGS_TTL) {
+  cache.set(key, { data, ts: Date.now(), ttl: ttlMs });
 }
 
 /* ──────────────────────────────────────────────────────
@@ -96,7 +115,7 @@ function parseApiStandings(apiData, leagueId) {
       goalDifference: row.goalDifference,
       points: row.points,
       form: row.form ? row.form.split(',') : [],
-      lastMatchDate: generateRandomRecentDate(),
+      lastMatchDate: unknownLastMatchDate(),
       xG: Number((1.0 + (row.goalsFor / Math.max(row.playedGames, 1)) * 0.45).toFixed(2)),
       avgShots: Number((10 + (row.goalsFor / Math.max(row.playedGames, 1)) * 2).toFixed(1)),
       avgSOT: Number((3 + (row.goalsFor / Math.max(row.playedGames, 1)) * 1.5).toFixed(1)),
@@ -153,7 +172,7 @@ function genStats(name, shortName, pos, totalTeams, played) {
     goalDifference: goalsFor - goalsAgainst,
     points: won * 3 + drawn,
     form,
-    lastMatchDate: generateRandomRecentDate(),
+    lastMatchDate: unknownLastMatchDate(),
     xG: Number((gfPer * 0.92).toFixed(2)),
     avgShots: Number((9 + strength * 6).toFixed(1)), // 9 to 15
     avgSOT: Number((3 + strength * 4).toFixed(1)), // 3 to 7
@@ -311,7 +330,7 @@ export async function getH2HHistory(homeTeamId, awayTeamId, leagueId = 'PL') {
            inFlightRequests.set(matchCacheKey, reqPromise);
            apiData = await reqPromise;
            inFlightRequests.delete(matchCacheKey);
-           if (apiData) setCache(matchCacheKey, apiData, 86400); // cache for 24h
+           if (apiData) setCache(matchCacheKey, apiData, 24 * 60 * 60 * 1000); // 24h
         }
       }
 
@@ -447,12 +466,25 @@ export async function getMatchPredictionDetails(homeTeamId, awayTeamId, leagueId
   const awayTeam = standings.teams.find((t) => t.id === Number(awayTeamId)) || standings.teams[1];
   const h2h = await getH2HHistory(homeTeamId, awayTeamId, leagueId);
   
-  // Use '39' for PL as default in api-football
-  const externalLeagueId = leagueId === 'PL' ? '39' : (leagueId === 'PD' ? '140' : (leagueId === 'SA' ? '135' : (leagueId === 'BL1' ? '78' : '39')));
-  const homeExternalStats = await getTeamStats(homeTeamId, externalLeagueId, '2024');
-  const awayExternalStats = await getTeamStats(awayTeamId, externalLeagueId, '2024');
-  
-  const prediction = calculateMatchPrediction(homeTeam, awayTeam, h2h.matches, homeExternalStats, awayExternalStats);
+  // Mapeo football-data.org -> api-football (ids de competicion distintos)
+  const externalLeagueId = API_FOOTBALL_LEAGUE_IDS[leagueId] || API_FOOTBALL_LEAGUE_IDS.PL;
+  const season = currentSeason();
+
+  // Se resuelve por NOMBRE, no por id: las dos APIs numeran los equipos
+  // de forma independiente.
+  const [homeExternalStats, awayExternalStats] = await Promise.all([
+    getTeamStats(homeTeam.name, externalLeagueId, season),
+    getTeamStats(awayTeam.name, externalLeagueId, season),
+  ]);
+
+  const prediction = calculateMatchPrediction(
+    homeTeam,
+    awayTeam,
+    h2h.matches,
+    homeExternalStats,
+    awayExternalStats,
+    { leagueId, isLiveData: standings.dataSource === 'live' }
+  );
 
   return {
     matchInfo: { league: standings.league, homeTeam, awayTeam },

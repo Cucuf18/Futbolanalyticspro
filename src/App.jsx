@@ -54,7 +54,7 @@ function PredictorView({ isPremium, onOpenPremiumModal }) {
   }, [homeId, awayId, selectedLeague]);
 
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(400px, 1fr))', gap: '32px' }}>
+    <div className="full-grid" style={{ display: 'grid', gridTemplateColumns: 'minmax(360px, 1fr) minmax(420px, 1.35fr)', gap: '28px', alignItems: 'start' }}>
       <div style={{ display: 'flex', flexDirection: 'column', gap: '24px' }}>
         {loading ? (
           <div style={{ textAlign: 'center', padding: '60px 20px', color: 'var(--text-secondary)' }}>
@@ -230,7 +230,7 @@ function AppLayout() {
         dataSource={'live'}
       />
 
-      <main style={{ maxWidth: '1280px', width: '100%', margin: '0 auto', padding: '24px 16px', flex: 1 }}>
+      <main className="app-shell" style={{ flex: 1 }}>
         <div style={{ marginBottom: '20px' }}>
           <LeagueSelector
             leagues={LEAGUES}

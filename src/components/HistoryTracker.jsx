@@ -15,7 +15,7 @@ export default function HistoryTracker() {
   return (
     <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
       
-      <main style={{ maxWidth: '800px', width: '100%', margin: '0 auto', padding: '40px 16px', flex: 1 }}>
+      <main style={{ width: '100%', margin: 0, padding: '32px clamp(16px, 3vw, 48px)', flex: 1 }}>
         
         <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '24px' }}>
           <div>

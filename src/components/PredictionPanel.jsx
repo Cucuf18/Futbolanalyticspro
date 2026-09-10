@@ -5,31 +5,30 @@ import MatchPicks from './MatchPicks';
 
 export default function PredictionPanel({ predictionData, isPremium, onOpenPremiumModal }) {
   const { addToSlip } = useBetSlip();
-  const [cuotaMercado, setCuotaMercado] = useState(2.10); // Placeholder for future input
   
   if (!predictionData || !predictionData.prediction) return null;
 
   const { matchInfo, h2h, prediction } = predictionData;
 
-  const { 
-    probabilities = {}, 
-    expectedGoals = {}, 
-    probabilitiesSecondary = {}, 
-    mostLikelyScore = 'N/A', 
-    fairOdds = {}, 
-    topPredictions = [], 
-    confidenceScore = 0, 
-    matchPicks = null 
+  const {
+    probabilities = {},
+    expectedGoals = {},
+    probabilitiesSecondary = {},
+    mostLikelyScore = 'N/A',
+    fairOdds = {},
+    marketOdds = {},
+    confidenceScore = 0,
+    matchPicks = null,
+    dataQuality = null,
+    leagueTendencies = [],
+    expectedEvents = null,
+    expectedEventsByTeam = null,
+    league = null,
   } = prediction || {};
 
   // Match Summary stats from Monte Carlo
   const summary = prediction.monteCarlo?.matchSummary;
 
-  // Calculate EV
-  const calcEV = (prob, odds) => {
-    return ((prob / 100) * odds) - 1;
-  };
-  
   const handleSavePick = (pick) => {
     addToSlip({
       matchId: `${matchInfo.homeTeam.id}-${matchInfo.awayTeam.id}-${pick.type}`,
@@ -39,7 +38,9 @@ export default function PredictionPanel({ predictionData, isPremium, onOpenPremi
       awayTeamFull: matchInfo.awayTeam.name,
       valueBetType: pick.label,
       probability: pick.probability,
-      odds: cuotaMercado || pick.fairOdds
+      odds: pick.marketOdds || pick.fairOdds,
+      breakEvenOdds: pick.breakEvenOdds || pick.fairOdds,
+      marketType: pick.marketType,
     });
   };
 
@@ -76,7 +77,12 @@ export default function PredictionPanel({ predictionData, isPremium, onOpenPremi
       }}>
 
         {/* ========== MATCH PICKS SECTION ========== */}
-        <MatchPicks matchPicks={matchPicks} matchInfo={matchInfo} />
+        <MatchPicks
+          matchPicks={matchPicks}
+          matchInfo={matchInfo}
+          dataQuality={dataQuality}
+          leagueTendencies={leagueTendencies}
+        />
 
         {/* ========== MATCH SUMMARY SECTION ========== */}
         {summary && (
@@ -232,7 +238,11 @@ export default function PredictionPanel({ predictionData, isPremium, onOpenPremi
         </div>
 
         {/* ========== DEPTH METRICS ========== */}
-        <DepthMetrics homeTeam={matchInfo.homeTeam} awayTeam={matchInfo.awayTeam} />
+        <DepthMetrics
+          homeTeam={matchInfo.homeTeam}
+          awayTeam={matchInfo.awayTeam}
+          expectedByTeam={expectedEventsByTeam}
+        />
 
         {/* ========== DETAILED METRICS ========== */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '14px', marginBottom: '24px' }}>
@@ -268,86 +278,82 @@ export default function PredictionPanel({ predictionData, isPremium, onOpenPremi
           </div>
         </div>
 
-        {/* ========== VALUE BET & EV ========== */}
-        {/* ========== VALUE BET & EV ========== */}
-        <div style={{ marginTop: '24px' }}>
-          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
-            <div style={{ fontSize: '13px', fontWeight: 600, color: 'var(--text-secondary)' }}>
-              Top Picks & Cuotas Justas (Fair Odds)
-            </div>
-            {topPredictions && topPredictions.length > 0 && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: '8px' }}>
-                <span style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Cuota Casa:</span>
-                <input 
-                  type="number" 
-                  step="0.01" 
-                  value={cuotaMercado} 
-                  onChange={(e) => setCuotaMercado(Number(e.target.value))}
-                  style={{ width: '60px', background: 'rgba(255,255,255,0.05)', border: '1px solid var(--glass-border)', color: 'white', padding: '4px 8px', borderRadius: '4px', fontSize: '12px' }}
-                />
+        {/* ========== EVENTOS ESPERADOS DEL PARTIDO ========== */}
+        {expectedEvents && (
+          <div style={{ marginTop: '24px' }}>
+            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '12px', flexWrap: 'wrap', gap: '8px' }}>
+              <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-secondary)' }}>
+                Eventos esperados en este cruce
               </div>
-            )}
-          </div>
-          
-          {(!topPredictions || topPredictions.length === 0) ? (
-            <div style={{ background: 'rgba(255,255,255,0.02)', border: '1px dashed rgba(255,255,255,0.1)', padding: '20px', borderRadius: '14px', textAlign: 'center', color: 'var(--text-muted)', fontSize: '13px' }}>
-              El motor estadístico no ha detectado apuestas de valor EV+ claro para este encuentro.
+              {league && (
+                <div style={{ fontSize: '10px', fontWeight: 700, color: 'var(--accent-cyan)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                  Base de {league.name}
+                </div>
+              )}
             </div>
-          ) : (
-            <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
-              {topPredictions.map((pick, idx) => {
-                const currentEV = calcEV(pick.probability, cuotaMercado);
-                const isPositiveEV = currentEV > 0;
-                
-                return (
-                  <div key={idx} style={{
-                    background: 'linear-gradient(135deg, rgba(0, 242, 254, 0.08) 0%, rgba(157, 78, 221, 0.08) 100%)',
-                    border: '1px solid rgba(0, 242, 254, 0.2)', borderRadius: '14px', padding: '16px',
-                    display: 'flex', flexDirection: 'column', gap: '12px'
-                  }}>
-                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '12px' }}>
-                      <div>
-                        <div style={{ fontSize: '10px', color: 'var(--accent-cyan)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                          Senal {pick.evThreshold}
-                        </div>
-                        <div style={{ fontSize: '15px', fontWeight: 700, marginTop: '4px' }}>{pick.label}</div>
-                        <div style={{ fontSize: '11px', color: 'var(--text-secondary)', marginTop: '6px' }}>
-                          Prob: <span style={{ color: 'white', fontWeight: 600 }}>{pick.probability}%</span> &nbsp;|&nbsp; 
-                          EV Mercado: <span style={{ color: isPositiveEV ? 'var(--accent-green)' : 'var(--accent-red)', fontWeight: 600 }}>{currentEV.toFixed(2)}</span>
-                        </div>
-                      </div>
-                      <div style={{ textAlign: 'right' }}>
-                        <div style={{ fontSize: '10px', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Cuota Justa (0% Margen)</div>
-                        <div style={{ fontSize: '20px', fontWeight: 800, color: 'var(--accent-cyan)' }}>@{pick.fairOdds}</div>
-                      </div>
-                    </div>
-                    
-                    <div style={{ display: 'flex', justifyContent: 'flex-end' }}>
-                      <button
-                        onClick={() => handleSavePick(pick)}
-                        style={{
-                          background: 'rgba(0, 242, 254, 0.1)', border: '1px solid var(--accent-cyan)',
-                          color: 'var(--accent-cyan)', padding: '6px 14px', borderRadius: '8px',
-                          fontSize: '11px', fontWeight: 700, cursor: 'pointer', transition: 'all 0.2s ease',
-                        }}
-                        onMouseOver={(e) => {
-                          e.target.style.background = 'var(--accent-cyan)';
-                          e.target.style.color = '#000';
-                        }}
-                        onMouseOut={(e) => {
-                          e.target.style.background = 'rgba(0, 242, 254, 0.1)';
-                          e.target.style.color = 'var(--accent-cyan)';
-                        }}
-                      >
-                        + Guardar Pick
-                      </button>
-                    </div>
+
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(120px, 1fr))', gap: '10px' }}>
+              {[
+                { key: 'corners', label: 'Corners', color: '#448aff' },
+                { key: 'cards', label: 'Tarjetas', color: '#ffd600' },
+                { key: 'fouls', label: 'Faltas', color: '#ffb300' },
+                { key: 'shots', label: 'Remates', color: '#ff6d00' },
+                { key: 'shotsOnTarget', label: 'Tiros a puerta', color: '#00e676' },
+                { key: 'offsides', label: 'Fueras de juego', color: '#ff5252' },
+              ].map((item) => (
+                <div key={item.key} style={{
+                  background: 'rgba(255,255,255,0.03)',
+                  border: '1px solid var(--glass-border)',
+                  borderRadius: '10px',
+                  padding: '12px',
+                }}>
+                  <div style={{ fontSize: '10px', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
+                    {item.label}
                   </div>
-                );
-              })}
+                  <div style={{ fontSize: '22px', fontWeight: 900, color: item.color, marginTop: '2px' }}>
+                    {expectedEvents[item.key]}
+                  </div>
+                </div>
+              ))}
             </div>
-          )}
-        </div>
+
+            <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '10px', lineHeight: 1.5 }}>
+              Estas medias se calculan cruzando el rendimiento de los dos equipos con la base estadistica
+              de la competicion. Son las que generan las lineas de los picks, por eso ningun partido
+              comparte las mismas lineas que otro.
+            </div>
+          </div>
+        )}
+
+        {/* ========== CUOTAS ESTIMADAS 1X2 ========== */}
+        {marketOdds && marketOdds.homeWin && (
+          <div style={{ marginTop: '24px' }}>
+            <div style={{ fontSize: '13px', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: '10px' }}>
+              Cuotas estimadas del mercado principal
+            </div>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '10px' }}>
+              {[
+                { label: matchInfo.homeTeam.shortName, odds: marketOdds.homeWin, min: fairOdds.homeWin, prob: probabilities.homeWin },
+                { label: 'Empate', odds: marketOdds.draw, min: fairOdds.draw, prob: probabilities.draw },
+                { label: matchInfo.awayTeam.shortName, odds: marketOdds.awayWin, min: fairOdds.awayWin, prob: probabilities.awayWin },
+              ].map((o, i) => (
+                <div key={i} style={{
+                  background: 'rgba(255,255,255,0.03)',
+                  border: '1px solid var(--glass-border)',
+                  borderRadius: '10px',
+                  padding: '12px',
+                  textAlign: 'center',
+                }}>
+                  <div style={{ fontSize: '11px', color: 'var(--text-secondary)', fontWeight: 700 }}>{o.label}</div>
+                  <div style={{ fontSize: '20px', fontWeight: 900, color: 'var(--accent-cyan)', marginTop: '4px' }}>@{o.odds}</div>
+                  <div style={{ fontSize: '10px', color: 'var(--text-muted)', marginTop: '2px' }}>
+                    {o.prob}% · minima @{o.min}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* ========== MONTE CARLO SIMULATION ========== */}
         {prediction.monteCarlo && (
