@@ -157,6 +157,30 @@ if (fs.existsSync(distPath)) {
   });
 }
 
+/* ─────────────────────────────────────────────────────────
+   Resolucion automatica del backtest
+   El endpoint /api/backtest/settle existia pero nadie lo llamaba, asi
+   que las predicciones se guardaban y no se resolvian nunca. Ahora el
+   propio servidor lo hace solo: no hace falta tocar la terminal.
+   ───────────────────────────────────────────────────────── */
+const SETTLE_INTERVAL_MS = 6 * 60 * 60 * 1000; // cada 6 horas
+
+async function autoSettle() {
+  try {
+    const result = await settlePending();
+    if (result.settled > 0) {
+      console.log(`[Backtest] Resueltas ${result.settled} predicciones contra resultados reales.`);
+    }
+  } catch (err) {
+    console.warn('[Backtest] Fallo la resolucion automatica:', err.message);
+  }
+}
+
+// Un primer pase al arrancar (con margen para no competir con el
+// arranque) y despues cada 6 horas.
+setTimeout(autoSettle, 60 * 1000).unref?.();
+setInterval(autoSettle, SETTLE_INTERVAL_MS).unref?.();
+
 app.listen(config.port, () => {
   console.log(`=======================================================`);
   console.log(` FutbolAnalytics API Server running on port ${config.port}`);

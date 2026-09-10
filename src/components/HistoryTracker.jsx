@@ -2,6 +2,7 @@ import React from 'react';
 import { useBetSlip } from '../context/BetSlipContext';
 import { useNavigate } from 'react-router-dom';
 import Navbar from './Navbar';
+import BacktestReport from './BacktestReport';
 
 export default function HistoryTracker() {
   const { history, clearHistory } = useBetSlip();
@@ -32,6 +33,10 @@ export default function HistoryTracker() {
             ← Volver al Dashboard
           </button>
         </div>
+
+        {/* Rendimiento real medido por el propio motor */}
+        <BacktestReport />
+
 
         {/* METRICS ROW */}
         <div style={{ 
