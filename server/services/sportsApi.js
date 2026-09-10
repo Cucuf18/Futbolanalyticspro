@@ -4,6 +4,7 @@ import { getTeamStats, currentSeason } from './externalDataAggregator.js';
 import { fetchFromApi, getCached, setCache, DEFAULT_TTL } from './footballDataClient.js';
 import { getTeamHistory, compareByCommonOpponents } from './teamHistory.js';
 import { ingestMatches, getRating } from './ratingPool.js';
+import { recordPrediction } from './backtest.js';
 
 /* ──────────────────────────────────────────────────────
    In-memory cache with TTL (Time To Live)
@@ -17,6 +18,11 @@ const API_FOOTBALL_LEAGUE_IDS = {
   PD: '140',  // La Liga
   SA: '135',  // Serie A
   BL1: '78',  // Bundesliga
+  FL1: '61',  // Ligue 1
+  DED: '88',  // Eredivisie
+  PPL: '94',  // Primeira Liga
+  ELC: '40',  // Championship
+  BSA: '71',  // Brasileirao Serie A
   CL: '2',    // UEFA Champions League
 };
 
@@ -195,6 +201,11 @@ const LEAGUE_META = {
   PD: { name: 'La Liga', country: 'España', season: '2025/2026', played: 24 },
   SA: { name: 'Serie A', country: 'Italia', season: '2025/2026', played: 24 },
   BL1: { name: 'Bundesliga', country: 'Alemania', season: '2025/2026', played: 22 },
+  FL1: { name: 'Ligue 1', country: 'Francia', season: '2025/2026', played: 22 },
+  DED: { name: 'Eredivisie', country: 'Paises Bajos', season: '2025/2026', played: 22 },
+  PPL: { name: 'Primeira Liga', country: 'Portugal', season: '2025/2026', played: 22 },
+  ELC: { name: 'Championship', country: 'Inglaterra', season: '2025/2026', played: 30 },
+  BSA: { name: 'Brasileirao', country: 'Brasil', season: '2026', played: 24 },
   CL: { name: 'Champions League', country: 'Europa', season: '2025/2026', played: 8 },
 };
 
@@ -405,7 +416,7 @@ function formatApiH2H(homeTeam, awayTeam, apiMatches) {
    ────────────────────────────────────────────────────── */
 
 // Ligas domesticas que ya sabemos consultar, de mayor a menor nivel medio.
-const DOMESTIC_LEAGUES = ['PL', 'PD', 'SA', 'BL1'];
+const DOMESTIC_LEAGUES = ['PL', 'PD', 'SA', 'BL1', 'FL1', 'PPL', 'DED', 'ELC', 'BSA'];
 
 /**
  * En la fase de liga de la Champions, en la jornada 1 TODOS los equipos
@@ -526,6 +537,15 @@ export async function getMatchPredictionDetails(homeTeamId, awayTeamId, leagueId
       commonOpponents,
     }
   );
+
+  // Toda prediccion queda registrada para poder medir despues cuanto
+  // acierta de verdad. Sin esto no hay forma de saber si el modelo
+  // mejora o empeora con los cambios.
+  try {
+    recordPrediction({ leagueId, homeTeam, awayTeam, prediction });
+  } catch (err) {
+    console.warn('[Backtest] No se pudo registrar la prediccion:', err.message);
+  }
 
   // Avisos honestos sobre de donde salen los datos de cada equipo.
   const warnings = [];

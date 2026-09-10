@@ -4,6 +4,11 @@ import { getRating, eloToXgMultiplier } from './ratingPool.js';
 import {
   poisson,
   lineProbability,
+  buildScoreMatrix,
+  summarizeMatrix,
+  goalsLineProbability,
+  handicapProbability,
+  DEFAULT_RHO,
   buildMatchProfile,
   findBestLine,
   computeDataQuality,
@@ -11,6 +16,8 @@ import {
   fairOddsFrom,
   marketOddsFrom,
   priceSelection,
+  calibrateForMarket,
+  isVerifiedMarket,
   buildCountPick,
   distinctivenessFromProb,
   MIN_USEFUL_ODDS,
@@ -165,37 +172,25 @@ function runMonteCarloSimulation(xG_Home, xG_Away, matchProfile, iterations = 10
  * Asian Handicap Engine: busca la linea que deja la probabilidad de
  * cubrir mas cerca del 50%.
  */
-function calculateAsianHandicap(xG_Home, xG_Away) {
+function calculateAsianHandicap(scoreMatrix) {
   const lines = [-2.5, -2.0, -1.5, -1.0, -0.5, 0, 0.5, 1.0, 1.5, 2.0, 2.5];
   let bestLine = 0;
   let minDiff = 100;
   let finalHomeProb = 0;
   let finalAwayProb = 0;
 
+  // Se resuelve sobre la misma matriz Dixon-Coles que el resto del
+  // modelo, no sobre una Poisson aparte: antes el handicap podia
+  // contradecir al 1X2 que se mostraba justo encima.
   for (const line of lines) {
-    let homeCoverProb = 0;
-    let awayCoverProb = 0;
-
-    for (let h = 0; h <= 10; h++) {
-      const pHome = poisson(h, xG_Home);
-      for (let a = 0; a <= 10; a++) {
-        const prob = pHome * poisson(a, xG_Away);
-        const adjustedHomeScore = h + line;
-        if (adjustedHomeScore > a) homeCoverProb += prob;
-        else if (adjustedHomeScore < a) awayCoverProb += prob;
-      }
-    }
-
-    const totalCoverProb = homeCoverProb + awayCoverProb;
-    if (totalCoverProb > 0) {
-      const normHome = (homeCoverProb / totalCoverProb) * 100;
-      const diff = Math.abs(normHome - 50);
-      if (diff < minDiff) {
-        minDiff = diff;
-        bestLine = line;
-        finalHomeProb = Math.round(normHome);
-        finalAwayProb = Math.round((awayCoverProb / totalCoverProb) * 100);
-      }
+    const { home, away } = handicapProbability(scoreMatrix, line);
+    const normHome = home * 100;
+    const diff = Math.abs(normHome - 50);
+    if (diff < minDiff) {
+      minDiff = diff;
+      bestLine = line;
+      finalHomeProb = Math.round(normHome);
+      finalAwayProb = Math.round(away * 100);
     }
   }
 
@@ -223,6 +218,7 @@ const sideWord = (side) => (side === 'OVER' ? 'Mas de' : 'Menos de');
  * valor esperado y grupo de correlacion.
  */
 function finalizePick(pick) {
+  const verified = isVerifiedMarket(pick.marketType);
   // Si el pick no trae precio propio (mercados no basados en lineas), se
   // calcula aqui con el mismo modelo dual: cuota estimada de la casa a
   // partir de la probabilidad cruda, cuota minima desde la calibrada.
@@ -238,6 +234,7 @@ function finalizePick(pick) {
   return {
     ...pick,
     ...price,
+    verified,
     fairOdds: price.breakEvenOdds,
     selectionScore: pick.selectionScore ?? pick.probability,
     correlationGroup: pick.correlationGroup || pick.marketType,
@@ -262,6 +259,7 @@ function isUsable(pick) {
  */
 function buildCandidatePicks(ctx) {
   const {
+    scoreMatrix,
     homeStats, awayStats, matchProfile, dataQuality, leagueProfile,
     xG_Home, xG_Away, asianHandicap, probs, h2hCount,
   } = ctx;
@@ -294,9 +292,21 @@ function buildCandidatePicks(ctx) {
   const hint = (mean, leagueBaseTotal) => (mean >= leagueBaseTotal ? 'OVER' : 'UNDER');
 
   /* ─── 1X2 ─────────────────────────────────────────────────────── */
-  const pHome = calibrate(probs.homeWin, dataQuality);
-  const pDraw = calibrate(probs.draw, dataQuality);
-  const pAway = calibrate(probs.awayWin, dataQuality);
+  // Cada mercado se calibra con su coeficiente medido en el backtest.
+  // RESULTADO y HANDICAP tienen k = 0 porque no demostraron ninguna
+  // ventaja real, asi que colapsan al 50% y dejan de aparecer.
+  const pHome = calibrateForMarket(probs.homeWin, dataQuality, 'RESULTADO');
+  const pDraw = calibrateForMarket(probs.draw, dataQuality, 'RESULTADO');
+  const pAway = calibrateForMarket(probs.awayWin, dataQuality, 'RESULTADO');
+  // La doble oportunidad se calibra sobre la SUMA cruda, no sumando dos
+  // valores ya encogidos: encoger cada parte hacia el 50% y luego sumarlas
+  // inflaba el total (50 + 30 = 80 cuando la verdad era 75).
+  const dcRaw = {
+    '1X': probs.homeWin + probs.draw,
+    X2: probs.draw + probs.awayWin,
+    12: probs.homeWin + probs.awayWin,
+  };
+  const dcProb = (key) => calibrateForMarket(dcRaw[key], dataQuality, 'DOBLE');
 
   if (pHome >= 55) {
     push({
@@ -304,6 +314,7 @@ function buildCandidatePicks(ctx) {
       label: `Victoria Local (${homeStats.name})`,
       probability: pHome,
       rawProbability: probs.homeWin,
+      settle: { kind: 'RESULT', side: 'HOME' },
       distinctiveness: distinctivenessFromProb(pHome, BASE_RATES.HOME_WIN),
       selectionScore: pHome + distinctivenessFromProb(pHome, BASE_RATES.HOME_WIN),
       marketType: 'RESULTADO',
@@ -321,6 +332,7 @@ function buildCandidatePicks(ctx) {
       label: `Victoria Visitante (${awayStats.name})`,
       probability: pAway,
       rawProbability: probs.awayWin,
+      settle: { kind: 'RESULT', side: 'AWAY' },
       distinctiveness: distinctivenessFromProb(pAway, BASE_RATES.AWAY_WIN),
       selectionScore: pAway + distinctivenessFromProb(pAway, BASE_RATES.AWAY_WIN),
       marketType: 'RESULTADO',
@@ -336,9 +348,9 @@ function buildCandidatePicks(ctx) {
      El mercado mas util para un pick realmente seguro y el que faltaba
      por completo: cubre dos de los tres resultados posibles.          */
   const dc = [
-    { key: '1X', prob: pHome + pDraw, raw: probs.homeWin + probs.draw, label: `Doble Oportunidad: ${homeName} o Empate (1X)`, why: `${homeName} evita la derrota en el ${Math.min(93, Math.round(pHome + pDraw))}% de las simulaciones.` },
-    { key: 'X2', prob: pDraw + pAway, raw: probs.draw + probs.awayWin, label: `Doble Oportunidad: Empate o ${awayName} (X2)`, why: `${awayName} evita la derrota en el ${Math.min(93, Math.round(pDraw + pAway))}% de las simulaciones.` },
-    { key: '12', prob: pHome + pAway, raw: probs.homeWin + probs.awayWin, label: 'Doble Oportunidad: No hay empate (12)', why: `El empate solo aparece en el ${pDraw}% de las simulaciones.` },
+    { key: '1X', prob: dcProb('1X'), raw: probs.homeWin + probs.draw, label: `Doble Oportunidad: ${homeName} o Empate (1X)`, why: `${homeName} evita la derrota en el ${Math.min(93, Math.round(dcProb('1X')))}% de las simulaciones.` },
+    { key: 'X2', prob: dcProb('X2'), raw: probs.draw + probs.awayWin, label: `Doble Oportunidad: Empate o ${awayName} (X2)`, why: `${awayName} evita la derrota en el ${Math.min(93, Math.round(dcProb('X2')))}% de las simulaciones.` },
+    { key: '12', prob: dcProb('12'), raw: probs.homeWin + probs.awayWin, label: 'Doble Oportunidad: No hay empate (12)', why: `El empate solo aparece en el ${pDraw}% de las simulaciones.` },
   ];
   dc.forEach((o) => {
     const prob = Math.min(93, Math.round(o.prob));
@@ -348,6 +360,7 @@ function buildCandidatePicks(ctx) {
         label: o.label,
         probability: prob,
         rawProbability: Math.min(97, Math.round(o.raw)),
+        settle: { kind: 'DOUBLE_CHANCE', side: o.key },
         distinctiveness: distinctivenessFromProb(prob, BASE_RATES['DC_' + o.key]),
         selectionScore: prob + distinctivenessFromProb(prob, BASE_RATES['DC_' + o.key]),
         marketType: 'DOBLE',
@@ -361,13 +374,14 @@ function buildCandidatePicks(ctx) {
   /* ─── HANDICAP ASIATICO ───────────────────────────────────────── */
   if (asianHandicap.homeProb >= 55 || asianHandicap.awayProb >= 55) {
     const isHome = asianHandicap.homeProb >= asianHandicap.awayProb;
-    const prob = calibrate(isHome ? asianHandicap.homeProb : asianHandicap.awayProb, dataQuality);
+    const prob = calibrateForMarket(isHome ? asianHandicap.homeProb : asianHandicap.awayProb, dataQuality, 'HANDICAP');
     if (prob >= 55) {
       push({
         type: `AH_${isHome ? 'HOME' : 'AWAY'}_${isHome ? asianHandicap.line : -asianHandicap.line}`,
         label: `Handicap Asiatico ${isHome ? homeName : awayName}: ${isHome ? asianHandicap.homeLabel : asianHandicap.awayLabel}`,
         probability: prob,
         rawProbability: isHome ? asianHandicap.homeProb : asianHandicap.awayProb,
+        settle: { kind: 'HANDICAP', side: isHome ? 'HOME' : 'AWAY', line: isHome ? asianHandicap.line : -asianHandicap.line },
         distinctiveness: distinctivenessFromProb(prob, BASE_RATES.AH),
         selectionScore: prob + distinctivenessFromProb(prob, BASE_RATES.AH),
         marketType: 'HANDICAP',
@@ -380,13 +394,26 @@ function buildCandidatePicks(ctx) {
 
   /* ─── GOLES TOTALES (linea dinamica) ──────────────────────────── */
   const totalXG = xG_Home + xG_Away;
-  const goalsFound = findBestLine({ mean: totalXG, dispersion: disp.goals, dataQuality, band, directionalHint: hint(totalXG, leagueProfile.goalsPerTeam * 2) });
+  // Las lineas de goles se evaluan sobre la matriz Dixon-Coles, no sobre
+  // una Poisson aparte, para que no puedan contradecir al 1X2.
+  const goalsFound = findBestLine({
+    mean: totalXG,
+    dispersion: disp.goals,
+    dataQuality,
+    band,
+    directionalHint: hint(totalXG, leagueProfile.goalsPerTeam * 2),
+    marketType: 'GOLES',
+    probabilityFn: scoreMatrix
+      ? (line) => goalsLineProbability(scoreMatrix, line)
+      : null,
+  });
   push(buildCountPick({
     marketType: 'GOLES',
     typePrefix: 'GOALS',
     found: goalsFound,
     leagueBaseline: leagueProfile.goalsPerTeam * 2,
     profile: leagueProfile,
+    settle: goalsFound ? { kind: 'GOALS_TOTAL', side: goalsFound.side, line: goalsFound.line } : null,
     labelFor: (f) => `${sideWord(f.side)} ${f.line} Goles en el Partido`,
     reasons: goalsFound ? [`Goles esperados en este cruce: ${totalXG.toFixed(2)} (${homeName} ${xG_Home.toFixed(2)} - ${xG_Away.toFixed(2)} ${awayName}).`] : [],
   }));
@@ -396,14 +423,19 @@ function buildCandidatePicks(ctx) {
     { name: homeName, xg: xG_Home, key: 'HOME' },
     { name: awayName, xg: xG_Away, key: 'AWAY' },
   ].forEach((t) => {
-    const raw = (1 - poisson(0, t.xg)) * 100;
-    const prob = calibrate(raw, dataQuality);
+    // P(el equipo marca al menos 1) sacado de la matriz, que ya incluye
+    // la correccion de marcadores bajos.
+    const raw = (t.key === 'HOME'
+      ? 1 - scoreMatrix[0].reduce((acc, v) => acc + v, 0)
+      : 1 - scoreMatrix.reduce((acc, row) => acc + row[0], 0)) * 100;
+    const prob = calibrateForMarket(raw, dataQuality, 'GOLES');
     if (prob >= 62) {
       push({
         type: `${t.key}_SCORES`,
         label: `${t.name} marca al menos 1 gol`,
         probability: prob,
         rawProbability: Math.round(raw),
+        settle: { kind: 'TEAM_SCORES', side: t.key },
         distinctiveness: distinctivenessFromProb(prob, BASE_RATES.SCORES),
         selectionScore: prob + distinctivenessFromProb(prob, BASE_RATES.SCORES),
         marketType: 'GOLES',
@@ -415,8 +447,8 @@ function buildCandidatePicks(ctx) {
   });
 
   /* ─── BTTS ────────────────────────────────────────────────────── */
-  const bttsProb = calibrate(probs.btts, dataQuality);
-  const bttsNoProb = calibrate(100 - probs.btts, dataQuality);
+  const bttsProb = calibrateForMarket(probs.btts, dataQuality, 'BTTS');
+  const bttsNoProb = calibrateForMarket(100 - probs.btts, dataQuality, 'BTTS');
   const bttsSide = bttsProb >= bttsNoProb
     ? { prob: bttsProb, raw: probs.btts, label: 'Ambos Equipos Anotan: SI', why: `Ambos ataques superan el gol esperado (${xG_Home.toFixed(2)} y ${xG_Away.toFixed(2)}).` }
     : { prob: bttsNoProb, raw: 100 - probs.btts, label: 'Ambos Equipos Anotan: NO', why: `Al menos uno de los dos ataques se queda corto (${xG_Home.toFixed(2)} y ${xG_Away.toFixed(2)} de xG).` };
@@ -428,6 +460,7 @@ function buildCandidatePicks(ctx) {
       rawProbability: bttsSide.raw,
       marketType: 'BTTS',
       correlationGroup: 'GOLES',
+      settle: { kind: 'BTTS', side: bttsProb >= bttsNoProb ? 'YES' : 'NO' },
       distinctiveness: distinctivenessFromProb(bttsSide.prob, BASE_RATES.BTTS),
       selectionScore: bttsSide.prob + getSignatureBonus(leagueProfile, 'BTTS') + distinctivenessFromProb(bttsSide.prob, BASE_RATES.BTTS),
       evThreshold: 'EV+',
@@ -436,7 +469,7 @@ function buildCandidatePicks(ctx) {
   }
 
   /* ─── CORNERS ─────────────────────────────────────────────────── */
-  const cornersFound = findBestLine({ mean: matchProfile.corners.total, dispersion: disp.corners, dataQuality, band, directionalHint: hint(matchProfile.corners.total, leagueProfile.cornersPerTeam * 2) });
+  const cornersFound = findBestLine({ mean: matchProfile.corners.total, dispersion: disp.corners, dataQuality, band, directionalHint: hint(matchProfile.corners.total, leagueProfile.cornersPerTeam * 2), marketType: 'CORNERS' });
   push(buildCountPick({
     marketType: 'CORNERS',
     typePrefix: 'CORNERS',
@@ -454,7 +487,7 @@ function buildCandidatePicks(ctx) {
   const dominant = matchProfile.corners.home >= matchProfile.corners.away
     ? { name: homeName, mean: matchProfile.corners.home, key: 'HOME' }
     : { name: awayName, mean: matchProfile.corners.away, key: 'AWAY' };
-  const domCorners = findBestLine({ mean: dominant.mean, dispersion: disp.corners, dataQuality, band, directionalHint: hint(dominant.mean, leagueProfile.cornersPerTeam) });
+  const domCorners = findBestLine({ mean: dominant.mean, dispersion: disp.corners, dataQuality, band, directionalHint: hint(dominant.mean, leagueProfile.cornersPerTeam), marketType: 'CORNERS' });
   push(buildCountPick({
     marketType: 'CORNERS',
     typePrefix: `CORNERS_${dominant.key}`,
@@ -467,7 +500,7 @@ function buildCandidatePicks(ctx) {
   }));
 
   /* ─── TARJETAS ────────────────────────────────────────────────── */
-  const cardsFound = findBestLine({ mean: matchProfile.cards.total, dispersion: disp.cards, dataQuality, band, directionalHint: hint(matchProfile.cards.total, leagueProfile.cardsPerTeam * 2) });
+  const cardsFound = findBestLine({ mean: matchProfile.cards.total, dispersion: disp.cards, dataQuality, band, directionalHint: hint(matchProfile.cards.total, leagueProfile.cardsPerTeam * 2), marketType: 'TARJETAS' });
   push(buildCountPick({
     marketType: 'TARJETAS',
     typePrefix: 'CARDS',
@@ -483,7 +516,7 @@ function buildCandidatePicks(ctx) {
   }));
 
   /* ─── FALTAS ──────────────────────────────────────────────────── */
-  const foulsFound = findBestLine({ mean: matchProfile.fouls.total, dispersion: disp.fouls, dataQuality, band, directionalHint: hint(matchProfile.fouls.total, leagueProfile.foulsPerTeam * 2) });
+  const foulsFound = findBestLine({ mean: matchProfile.fouls.total, dispersion: disp.fouls, dataQuality, band, directionalHint: hint(matchProfile.fouls.total, leagueProfile.foulsPerTeam * 2), marketType: 'FALTAS' });
   push(buildCountPick({
     marketType: 'FALTAS',
     typePrefix: 'FOULS',
@@ -495,7 +528,7 @@ function buildCandidatePicks(ctx) {
   }));
 
   /* ─── REMATES TOTALES ─────────────────────────────────────────── */
-  const shotsFound = findBestLine({ mean: matchProfile.shots.total, dispersion: disp.shots, dataQuality, band, directionalHint: hint(matchProfile.shots.total, leagueProfile.shotsPerTeam * 2) });
+  const shotsFound = findBestLine({ mean: matchProfile.shots.total, dispersion: disp.shots, dataQuality, band, directionalHint: hint(matchProfile.shots.total, leagueProfile.shotsPerTeam * 2), marketType: 'TIROS' });
   push(buildCountPick({
     marketType: 'TIROS',
     typePrefix: 'SHOTS',
@@ -511,7 +544,7 @@ function buildCandidatePicks(ctx) {
     { name: homeName, mean: matchProfile.sot.home, key: 'HOME_SOT' },
     { name: awayName, mean: matchProfile.sot.away, key: 'AWAY_SOT' },
   ].forEach((t) => {
-    const found = findBestLine({ mean: t.mean, dispersion: disp.sot, dataQuality, band, directionalHint: hint(t.mean, leagueProfile.sotPerTeam) });
+    const found = findBestLine({ mean: t.mean, dispersion: disp.sot, dataQuality, band, directionalHint: hint(t.mean, leagueProfile.sotPerTeam), marketType: 'TIROS' });
     push(buildCountPick({
       marketType: 'TIROS',
       typePrefix: t.key,
@@ -525,7 +558,7 @@ function buildCandidatePicks(ctx) {
   });
 
   /* ─── OFFSIDES ────────────────────────────────────────────────── */
-  const offsidesFound = findBestLine({ mean: matchProfile.offsides.total, dispersion: disp.offsides, dataQuality, band, directionalHint: hint(matchProfile.offsides.total, leagueProfile.offsidesPerTeam * 2) });
+  const offsidesFound = findBestLine({ mean: matchProfile.offsides.total, dispersion: disp.offsides, dataQuality, band, directionalHint: hint(matchProfile.offsides.total, leagueProfile.offsidesPerTeam * 2), marketType: 'OFFSIDES' });
   push(buildCountPick({
     marketType: 'OFFSIDES',
     typePrefix: 'OFFSIDES',
@@ -551,10 +584,20 @@ function organizePicks(candidates, weights) {
   // El motor aprende de sus propios resultados: los mercados que
   // historicamente aciertan suben en el orden de seleccion, los que
   // fallan bajan. Solo afecta al ORDEN, nunca a la probabilidad.
+  // Un mercado cuyo rendimiento se ha comprobado contra resultados
+  // reales vale mas que uno del que no sabemos nada, aunque el segundo
+  // muestre un porcentaje mas alto. Sin este empujon los picks seguros
+  // acababan siendo casi todos de corners, tiros y offsides, que son
+  // justo los que ninguna API gratuita permite verificar.
+  const VERIFIED_BONUS = 5;
+
   const scored = candidates.map((p) => ({
     ...p,
     reliability: getMarketReliability(p.marketType),
-    selectionScore: p.selectionScore + getMarketReliability(p.marketType),
+    selectionScore:
+      p.selectionScore +
+      getMarketReliability(p.marketType) +
+      (p.verified ? VERIFIED_BONUS : 0),
   }));
 
   // Deduplicar por tipo, quedandonos con el de mejor score
@@ -568,9 +611,21 @@ function organizePicks(candidates, weights) {
   const usedGroups = new Set();
   const safe = [];
 
+  // Pasada 0: se reserva un hueco para el mejor pick de un mercado
+  // VERIFICADO, es decir, uno cuyo acierto real se ha comprobado contra
+  // resultados. Sin esta reserva los tres picks seguros acababan siendo
+  // de corners, tiros y offsides: mercados que ninguna API gratuita
+  // permite comprobar, asi que no hay ninguna prueba de que funcionen.
+  const bestVerified = all.find((p) => p.verified && p.probability >= Math.min(safeMin, 65));
+  if (bestVerified) {
+    safe.push(bestVerified);
+    usedGroups.add(bestVerified.correlationGroup);
+  }
+
   // Pasada 1: el mejor pick de cada grupo que supere el umbral seguro
   for (const p of all) {
     if (safe.length >= 3) break;
+    if (safe.includes(p)) continue;
     if (p.probability < safeMin) continue;
     if (usedGroups.has(p.correlationGroup)) continue;
     safe.push(p);
@@ -746,8 +801,11 @@ export function calculateMatchPrediction(
   // cualquier competicion y temporada, asi que compara equipos que nunca
   // se han enfrentado. La posicion en la tabla no puede hacer eso: en la
   // jornada 1 los 36 equipos de Champions comparten puesto.
-  const homeRating = getRating(homeStats.id);
-  const awayRating = getRating(awayStats.id);
+  // Los ratings pueden inyectarse desde fuera. Lo necesita el backtest
+  // walk-forward: para puntuar honestamente un partido del pasado hay que
+  // usar el Elo que el equipo tenia ANTES de jugarlo, no el de hoy.
+  const homeRating = options.homeRating || getRating(homeStats.id);
+  const awayRating = options.awayRating || getRating(awayStats.id);
   const eloUsable = homeRating.known && awayRating.known && Math.min(homeRating.matches, awayRating.matches) >= 4;
 
   if (eloUsable) {
@@ -781,40 +839,24 @@ export function calculateMatchPrediction(
   xG_Home = Math.min(xG_Home, maxSafe_xG);
   xG_Away = Math.min(xG_Away, maxSafe_xG);
 
-  // ── 5. MATRIZ DE POISSON ──
-  let probHomeWin = 0;
-  let probDraw = 0;
-  let probAwayWin = 0;
-  let probOver25 = 0;
-  let probBTTS = 0;
-  let maxScoreProb = -1;
-  let mostLikelyScore = { home: 1, away: 0 };
+  // ── 5. MATRIZ DE MARCADORES (DIXON-COLES) ──
+  // Una unica matriz de la que se deriva TODO: 1X2, goles, BTTS,
+  // marcador mas probable y handicap. La correccion de Dixon-Coles
+  // arregla la independencia falsa de la Poisson pura, que infravalora
+  // los empates bajos (0-0 y 1-1) en torno a un 15-25%.
+  const rho = leagueProfile.rho ?? DEFAULT_RHO;
+  const scoreMatrix = buildScoreMatrix(xG_Home, xG_Away, rho, 10);
+  const summary = summarizeMatrix(scoreMatrix);
 
-  for (let h = 0; h <= 8; h++) {
-    const pHome = poisson(h, xG_Home);
-    for (let a = 0; a <= 8; a++) {
-      const cellProb = pHome * poisson(a, xG_Away);
-
-      if (h > a) probHomeWin += cellProb;
-      else if (h === a) probDraw += cellProb;
-      else probAwayWin += cellProb;
-
-      if (h + a > 2.5) probOver25 += cellProb;
-      if (h > 0 && a > 0) probBTTS += cellProb;
-
-      if (cellProb > maxScoreProb) {
-        maxScoreProb = cellProb;
-        mostLikelyScore = { home: h, away: a };
-      }
-    }
-  }
-
-  const totalProb = probHomeWin + probDraw + probAwayWin;
-  const pctHomeWin = Math.round((probHomeWin / totalProb) * 100);
-  const pctDraw = Math.round((probDraw / totalProb) * 100);
+  const totalProb = summary.homeWin + summary.draw + summary.awayWin;
+  const pctHomeWin = Math.round((summary.homeWin / totalProb) * 100);
+  const pctDraw = Math.round((summary.draw / totalProb) * 100);
   const pctAwayWin = 100 - pctHomeWin - pctDraw;
-  const pctOver25 = Math.round(probOver25 * 100);
-  const pctBTTS = Math.round(probBTTS * 100);
+  const pctOver25 = Math.round(goalsLineProbability(scoreMatrix, 2.5).overProb * 100);
+  const pctBTTS = Math.round(summary.btts * 100);
+
+  const mostLikelyScore = { home: summary.mostLikely.home, away: summary.mostLikely.away };
+  const maxScoreProb = summary.mostLikely.prob;
 
   // ── 6. CALIDAD DE DATOS Y PERFIL DEL CRUCE ──
   // El tamano de muestra ya no es "partidos en esta competicion" sino el
@@ -842,11 +884,17 @@ export function calculateMatchPrediction(
     h2hCount: h2hHistory.length,
   });
 
-  const asianHandicap = calculateAsianHandicap(xG_Home, xG_Away);
-  const monteCarlo = runMonteCarloSimulation(xG_Home, xG_Away, matchProfile, 10000);
+  const asianHandicap = calculateAsianHandicap(scoreMatrix);
+  // El Monte Carlo solo alimenta el resumen visual: los picks salen de la
+  // matriz Dixon-Coles. En el backtest, que evalua miles de partidos, se
+  // salta porque son 40.000 sorteos aleatorios por partido tirados.
+  const monteCarlo = options.skipMonteCarlo
+    ? null
+    : runMonteCarloSimulation(xG_Home, xG_Away, matchProfile, 10000);
 
   // ── 7. PICKS ──
   const candidates = buildCandidatePicks({
+    scoreMatrix,
     homeStats,
     awayStats,
     matchProfile,
@@ -928,6 +976,7 @@ export function calculateMatchPrediction(
         offsides: matchProfile.offsides.away,
       },
     },
+    dixonColesRho: rho,
     leagueTendencies: leagueProfile.signatureMarkets,
     ratings: eloUsable
       ? {

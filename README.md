@@ -126,3 +126,90 @@ reenviar el historial completo ya no desvía los pesos. Además registra el
 acierto por mercado; a partir de 8 resoluciones, los mercados que funcionan
 suben en el orden de selección y los que fallan bajan. Consulta el estado en
 `GET /api/market-report`.
+
+
+---
+
+## 📊 Backtest: cuánto acierta de verdad
+
+```bash
+node scripts/backtest.mjs
+```
+
+Recorre una temporada entera de cada liga **en orden cronológico** y predice
+cada partido usando únicamente lo ocurrido **antes** de jugarse (walk-forward,
+sin mirar el futuro). Después compara con el resultado real.
+
+Esto es distinto de un backtest ingenuo: si usas la clasificación de hoy para
+predecir un partido de hace tres meses, esa tabla ya contiene el resultado y el
+acierto sale inflado.
+
+```bash
+node scripts/backtest.mjs PL              # una liga
+node scripts/backtest.mjs PL PD SA        # varias
+node scripts/backtest.mjs --min 8         # exigir 8 partidos previos
+```
+
+Lo que importa del informe no es el acierto global sino la **curva de
+calibración**: cuando el modelo dice 75%, ¿acierta el 75%? Un modelo que promete
+80% y cumple 60% no sirve aunque gane más de la mitad.
+
+### Resultado medido (7.007 picks, 9 ligas)
+
+| Mercado | Prometía | Acertaba | Señal |
+|---|---|---|---|
+| GOLES | 72.0% | 71.8% | buena |
+| DOBLE | 76.0% | 70.2% | buena |
+| BTTS | 70.9% | 53.5% | muy débil |
+| HANDICAP | 59.9% | 49.1% | nula |
+| RESULTADO | 64.3% | 45.9% | nula |
+
+De ahí salen los coeficientes de `MARKET_CALIBRATION` en `marketEngine.js`.
+Los mercados sin señal se encogen a k = 0, con lo que su probabilidad colapsa
+al 50% y dejan de superar el umbral: **desaparecen solos**.
+
+Tras aplicarlo: acierto real **70.3%** frente al **69.9%** anunciado — desvío de
+0.4 puntos. Antes eran 5.7.
+
+**Vuelve a correr el backtest después de tocar el motor y actualiza la tabla de
+coeficientes con lo que salga.** Es el único modo de saber si un cambio mejora
+o empeora.
+
+### Backtest automático en producción
+
+Cada predicción que genera la web se guarda sola y se resuelve contra el
+resultado real:
+
+- `GET /api/backtest/report` — acierto por mercado, liga, nivel de riesgo y curva de calibración
+- `GET /api/backtest/pending` — predicciones aún sin resolver
+- `POST /api/backtest/settle` — resuelve las ya jugadas
+
+### Mercados verificados y sin verificar
+
+Solo se pueden comprobar los mercados deducibles del marcador final. Corners,
+tarjetas, faltas, tiros y fueras de juego **no**: ninguna API gratuita publica
+esas estadísticas por partido. Esos picks salen marcados como `SIN VERIFICAR`
+en la interfaz, y el motor reserva siempre un hueco de los tres picks seguros
+para un mercado que sí esté comprobado.
+
+---
+
+## 🧠 Ratings y historial
+
+- `GET /api/ratings` — estado de la bolsa Elo (equipos, partidos, top)
+
+El Elo se alimenta de **cualquier** partido que la web llegue a ver, en
+cualquier competición o temporada, aprovechando peticiones que ya se hacían
+para otra cosa. Es transitivo: si A gana a X y X gana a B, A acaba por encima
+de B aunque nunca se hayan enfrentado.
+
+## ⚠️ Límites conocidos
+
+| Falta | Motivo |
+|---|---|
+| Córners, tiros y faltas reales | Ninguna API gratuita los da por partido; se estiman |
+| Lesiones y alineaciones | api-football gratuito solo llega a la temporada 2024 |
+| Ligas fuera de las 10 cubiertas | Turquía, Chequia, Noruega, Ucrania... no están en el plan gratuito |
+
+Los tres se arreglan con un plan de pago, no con código. El motor ya está
+preparado para usarlos en cuanto haya datos.

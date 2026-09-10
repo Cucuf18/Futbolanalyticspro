@@ -37,3 +37,4 @@ Thumbs.db
 
 # Bolsa de ratings Elo (se reconstruye sola desde la API)
 server/data/ratings.json
+server/data/predictions.json

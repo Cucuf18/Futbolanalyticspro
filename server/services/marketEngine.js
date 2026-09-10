@@ -70,6 +70,117 @@ export function lineProbability(mean, line, dispersion = 1) {
 }
 
 /* ══════════════════════════════════════════════════════════════════
+   1b. MATRIZ DE MARCADORES CON CORRECCION DIXON-COLES
+   ══════════════════════════════════════════════════════════════════ */
+
+/**
+ * Correccion tau de Dixon-Coles.
+ *
+ * La Poisson pura trata los goles del local y del visitante como sucesos
+ * independientes, y en el futbol real NO lo son: los marcadores bajos
+ * (0-0, 1-1) salen bastante mas de lo que predice, y los 1-0 y 0-1 algo
+ * menos. Sin esta correccion el modelo infravalora sistematicamente el
+ * empate y los Under, que es justo donde mas dinero se pierde.
+ *
+ * rho negativo = mas empates bajos. El valor tipico en ligas top ronda
+ * -0.13 y se puede ajustar por competicion en leagueProfiles.
+ */
+function dixonColesTau(x, y, lambda, mu, rho) {
+  if (x === 0 && y === 0) return 1 - lambda * mu * rho;
+  if (x === 0 && y === 1) return 1 + lambda * rho;
+  if (x === 1 && y === 0) return 1 + mu * rho;
+  if (x === 1 && y === 1) return 1 - rho;
+  return 1;
+}
+
+export const DEFAULT_RHO = -0.13;
+
+/**
+ * Construye la matriz de probabilidad de cada marcador exacto, ya
+ * normalizada. Todo lo demas (1X2, Over/Under, BTTS, handicap, marcador
+ * mas probable) se deriva de AQUI, de modo que no puedan contradecirse
+ * entre si: antes el 1X2 salia de una matriz y los goles de una Poisson
+ * aparte, y podian no cuadrar.
+ */
+export function buildScoreMatrix(lambda, mu, rho = DEFAULT_RHO, maxGoals = 10) {
+  const matrix = [];
+  let total = 0;
+
+  for (let h = 0; h <= maxGoals; h++) {
+    matrix[h] = [];
+    const pH = poisson(h, lambda);
+    for (let a = 0; a <= maxGoals; a++) {
+      const tau = Math.max(0.0001, dixonColesTau(h, a, lambda, mu, rho));
+      const cell = pH * poisson(a, mu) * tau;
+      matrix[h][a] = cell;
+      total += cell;
+    }
+  }
+
+  // Renormalizar: tau rompe la suma a 1 y el truncado en maxGoals tambien.
+  if (total > 0) {
+    for (let h = 0; h <= maxGoals; h++) {
+      for (let a = 0; a <= maxGoals; a++) matrix[h][a] /= total;
+    }
+  }
+  return matrix;
+}
+
+/** Recorre la matriz aplicando un predicado y suma la probabilidad. */
+export function matrixProbability(matrix, predicate) {
+  let sum = 0;
+  for (let h = 0; h < matrix.length; h++) {
+    for (let a = 0; a < matrix[h].length; a++) {
+      if (predicate(h, a)) sum += matrix[h][a];
+    }
+  }
+  return sum;
+}
+
+/** Resultados 1X2, Over/Under, BTTS y marcador mas probable de una vez. */
+export function summarizeMatrix(matrix) {
+  let homeWin = 0;
+  let draw = 0;
+  let awayWin = 0;
+  let btts = 0;
+  let best = { home: 0, away: 0, prob: -1 };
+
+  for (let h = 0; h < matrix.length; h++) {
+    for (let a = 0; a < matrix[h].length; a++) {
+      const p = matrix[h][a];
+      if (h > a) homeWin += p;
+      else if (h === a) draw += p;
+      else awayWin += p;
+      if (h > 0 && a > 0) btts += p;
+      if (p > best.prob) best = { home: h, away: a, prob: p };
+    }
+  }
+  return { homeWin, draw, awayWin, btts, mostLikely: best };
+}
+
+/** Probabilidad Over/Under de goles totales, derivada de la matriz. */
+export function goalsLineProbability(matrix, line) {
+  const over = matrixProbability(matrix, (h, a) => h + a > line);
+  return { overProb: over, underProb: 1 - over };
+}
+
+/** Handicap asiatico resuelto sobre la matriz (los empates se devuelven). */
+export function handicapProbability(matrix, line) {
+  let home = 0;
+  let away = 0;
+  for (let h = 0; h < matrix.length; h++) {
+    for (let a = 0; a < matrix[h].length; a++) {
+      const adj = h + line;
+      if (adj > a) home += matrix[h][a];
+      else if (adj < a) away += matrix[h][a];
+      // adj === a es push: se reembolsa, no cuenta para ningun lado
+    }
+  }
+  const total = home + away;
+  return total > 0 ? { home: home / total, away: away / total } : { home: 0.5, away: 0.5 };
+}
+
+/* ══════════════════════════════════════════════════════════════════
    2. CALIBRACION Y CUOTAS
    ══════════════════════════════════════════════════════════════════ */
 
@@ -134,6 +245,66 @@ export function calibrate(rawPct, dataQuality = 0.5) {
   const k = 0.80 + 0.15 * clamp(dataQuality, 0, 1); // 0.80 .. 0.95
   const shrunk = 50 + (rawPct - 50) * k;
   return Math.round(clamp(shrunk, 3, 93));
+}
+
+/**
+ * CALIBRACION MEDIDA POR MERCADO
+ * ------------------------------------------------------------------
+ * Estos coeficientes NO son inventados: salen de correr
+ * `node scripts/backtest.mjs` sobre 7.007 picks de 9 ligas, prediciendo
+ * cada partido solo con lo ocurrido antes de jugarse.
+ *
+ * Para cada mercado se midio lo que el modelo prometia frente a lo que
+ * cumplia, y se resolvio k en:  acierto_real = 50 + k * (prometido - 50)
+ *
+ *   mercado     prometia  acertaba   k      muestra
+ *   GOLES         72.0%    71.8%    0.99     2871
+ *   DOBLE         76.0%    70.2%    0.78     2465
+ *   BTTS          70.9%    53.5%    0.20      381
+ *   HANDICAP      59.9%    49.1%    0.00      656
+ *   RESULTADO     64.3%    45.9%    0.00      634
+ *
+ * k = 0 significa que en ese mercado el modelo no demostro ninguna
+ * ventaja: sus picks acertaban menos que una moneda pese a prometer un
+ * 64%. Con k = 0 la probabilidad colapsa al 50% y esos picks dejan de
+ * superar el umbral, que es exactamente lo que debe pasar.
+ *
+ * Vuelve a correr el backtest despues de cualquier cambio del motor y
+ * actualiza esta tabla con lo que salga.
+ */
+export const MARKET_CALIBRATION = {
+  GOLES: 0.99,
+  DOBLE: 0.78,
+  BTTS: 0.20,
+  HANDICAP: 0.00,
+  RESULTADO: 0.00,
+  // Sin medir: ninguna API gratuita da corners, tarjetas, faltas, tiros
+  // ni offsides por partido, asi que no se pueden verificar. Se les
+  // aplica un factor prudente por defecto y se marcan como no
+  // verificados para que la interfaz lo advierta.
+  CORNERS: 0.85,
+  TARJETAS: 0.85,
+  FALTAS: 0.85,
+  TIROS: 0.85,
+  OFFSIDES: 0.85,
+};
+
+// Mercados cuyo rendimiento se ha podido comprobar contra resultados reales.
+export const VERIFIED_MARKETS = new Set(['GOLES', 'DOBLE', 'BTTS', 'HANDICAP', 'RESULTADO']);
+
+export function isVerifiedMarket(marketType) {
+  return VERIFIED_MARKETS.has(marketType);
+}
+
+/**
+ * Calibracion completa: primero se encoge por la calidad de los datos
+ * del partido, y despues por el rendimiento historico medido del
+ * mercado concreto.
+ */
+export function calibrateForMarket(rawPct, dataQuality, marketType) {
+  const byData = calibrate(rawPct, dataQuality);
+  const k = MARKET_CALIBRATION[marketType] ?? 0.85;
+  return Math.round(clamp(50 + (byData - 50) * k, 3, 93));
 }
 
 /**
@@ -348,16 +519,22 @@ function candidateLines(mean, span = 5) {
  * @param {number} opts.minOdds     cuota minima util
  * @returns {object|null} { side, line, probability, fairOdds, marketOdds }
  */
-export function findBestLine({ mean, dispersion = 1, dataQuality = 0.5, band = [62, 90], minOdds = MIN_USEFUL_ODDS, directionalHint = null }) {
+export function findBestLine({ mean, dispersion = 1, dataQuality = 0.5, band = [62, 90], minOdds = MIN_USEFUL_ODDS, directionalHint = null, probabilityFn = null, marketType = null }) {
   if (!Number.isFinite(mean) || mean <= 0) return null;
 
   let best = null;
   let bestScore = -Infinity;
   for (const line of candidateLines(mean)) {
-    const { overProb, underProb } = lineProbability(mean, line, dispersion);
+    // Los goles usan la matriz Dixon-Coles; el resto de mercados de
+    // conteo usan la Binomial Negativa sobre su media esperada.
+    const { overProb, underProb } = probabilityFn
+      ? probabilityFn(line)
+      : lineProbability(mean, line, dispersion);
     for (const side of ['OVER', 'UNDER']) {
       const raw = (side === 'OVER' ? overProb : underProb) * 100;
-      const probability = calibrate(raw, dataQuality);
+      const probability = marketType
+        ? calibrateForMarket(raw, dataQuality, marketType)
+        : calibrate(raw, dataQuality);
       if (probability < band[0] || probability > band[1]) continue;
 
       const price = priceSelection(raw, probability);
@@ -433,6 +610,7 @@ export function buildCountPick({
   reasons = [],
   correlationGroup,
   leagueBaseline = null,
+  settle = null,
 }) {
   if (!found) return null;
   const note = getSignatureNote(profile, marketType);
@@ -462,6 +640,8 @@ export function buildCountPick({
     side: found.side,
     marketType,
     correlationGroup: correlationGroup || marketType,
+    settle,
+    verified: isVerifiedMarket(marketType),
     distinctiveness: Number(distinct.toFixed(1)),
     selectionScore: found.probability + getSignatureBonus(profile, marketType) + distinct,
     evThreshold: 'Estadistico',

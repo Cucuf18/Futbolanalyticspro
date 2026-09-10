@@ -32,7 +32,7 @@ const HOME_ADVANTAGE_ELO = 60;
 const COMPETITION_K = {
   CL: 30,   // Champions
   EL: 26,   // Europa League
-  PL: 24, PD: 24, SA: 24, BL1: 24, FL1: 22, PPL: 20, DED: 20,
+  PL: 24, PD: 24, SA: 24, BL1: 24, FL1: 22, PPL: 20, DED: 20, ELC: 20, BSA: 20,
   WC: 34, EC: 32,
   DEFAULT: 20,
 };

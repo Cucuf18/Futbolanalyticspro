@@ -17,6 +17,11 @@ const LEAGUES = [
   { id: 'PD', name: 'La Liga', country: 'España', code: 'ESP' },
   { id: 'SA', name: 'Serie A', country: 'Italia', code: 'ITA' },
   { id: 'BL1', name: 'Bundesliga', country: 'Alemania', code: 'GER' },
+  { id: 'FL1', name: 'Ligue 1', country: 'Francia', code: 'FRA' },
+  { id: 'DED', name: 'Eredivisie', country: 'Paises Bajos', code: 'NED' },
+  { id: 'PPL', name: 'Primeira Liga', country: 'Portugal', code: 'POR' },
+  { id: 'ELC', name: 'Championship', country: 'Inglaterra', code: 'EFL' },
+  { id: 'BSA', name: 'Brasileirao', country: 'Brasil', code: 'BRA' },
   { id: 'CL', name: 'Champions League', country: 'Europa', code: 'UCL' },
 ];
 

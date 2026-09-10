@@ -7,6 +7,7 @@ import { config } from './config.js';
 import { getLeagueStandings, getH2HHistory, getMatchPredictionDetails } from './services/sportsApi.js';
 import { learn, getWeights, getMarketReport } from './services/weightOptimizer.js';
 import { getPoolStats } from './services/ratingPool.js';
+import { settlePending, getReport, getPending } from './services/backtest.js';
 import { getTeamStats } from './services/externalDataAggregator.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -84,6 +85,34 @@ app.post('/api/learn', (req, res) => {
     const { history } = req.body;
     const updatedWeights = learn(history);
     res.json({ success: true, weights: updatedWeights });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// ── BACKTEST AUTOMATICO ──
+// Informe de rendimiento real del modelo, con curva de calibracion.
+app.get('/api/backtest/report', (req, res) => {
+  try {
+    res.json({ success: true, report: getReport() });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Predicciones guardadas todavia sin resolver.
+app.get('/api/backtest/pending', (req, res) => {
+  try {
+    res.json({ success: true, pending: getPending() });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Resuelve contra los resultados reales las predicciones ya jugadas.
+app.post('/api/backtest/settle', async (req, res) => {
+  try {
+    res.json({ success: true, result: await settlePending() });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }

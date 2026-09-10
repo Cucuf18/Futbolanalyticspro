@@ -74,6 +74,32 @@ function PickCard({ pick, matchInfo, riskLevel }) {
             {config.label}
             {typeof pick.expectedMean === 'number' && ` · media esperada ${pick.expectedMean}`}
           </div>
+          {pick.verified === false && (
+            <div
+              title="El acierto de este mercado no se ha podido comprobar contra resultados reales: ninguna API gratuita da corners, tarjetas, faltas, tiros ni offsides por partido."
+              style={{
+                display: 'inline-block', marginTop: '4px', padding: '2px 6px', borderRadius: '5px',
+                fontSize: '9px', fontWeight: 800, letterSpacing: '0.03em',
+                background: 'rgba(255, 170, 0, 0.12)', color: 'var(--accent-gold)',
+                border: '1px solid rgba(255, 170, 0, 0.3)',
+              }}
+            >
+              SIN VERIFICAR
+            </div>
+          )}
+          {pick.verified === true && (
+            <div
+              title="Mercado comprobado contra resultados reales en el backtest walk-forward."
+              style={{
+                display: 'inline-block', marginTop: '4px', padding: '2px 6px', borderRadius: '5px',
+                fontSize: '9px', fontWeight: 800, letterSpacing: '0.03em',
+                background: 'rgba(0, 230, 118, 0.12)', color: 'var(--accent-green)',
+                border: '1px solid rgba(0, 230, 118, 0.3)',
+              }}
+            >
+              VERIFICADO
+            </div>
+          )}
         </div>
         <div style={{ textAlign: 'right', flexShrink: 0 }}>
           <div style={{ fontSize: '20px', fontWeight: 900, color: config.color }}>{pick.probability}%</div>
@@ -226,6 +252,20 @@ export default function MatchPicks({ matchPicks, matchInfo, dataQuality, leagueT
           </button>
         ))}
       </div>
+
+      {currentPicks.some((p) => p.verified === false) && (
+        <div style={{
+          background: 'rgba(255, 170, 0, 0.06)', border: '1px solid rgba(255, 170, 0, 0.25)',
+          borderRadius: '10px', padding: '10px 12px', marginBottom: '12px',
+          fontSize: '11.5px', color: 'var(--text-secondary)', lineHeight: 1.5,
+        }}>
+          Los picks marcados <strong style={{ color: 'var(--accent-gold)' }}>SIN VERIFICAR</strong> son de
+          mercados cuyo acierto real no se ha podido comprobar (corners, tarjetas, faltas, tiros y
+          fueras de juego): ninguna API gratuita publica esas estadisticas por partido. Los marcados
+          como <strong style={{ color: 'var(--accent-green)' }}>VERIFICADO</strong> se han medido sobre
+          miles de partidos ya jugados.
+        </div>
+      )}
 
       {hasCorrelation && (
         <div style={{

@@ -30,6 +30,7 @@ const DECAY_HALFLIFE_DAYS = 150;
 const COMPETITION_WEIGHT = {
   CL: 1.0, EL: 0.95,
   PL: 1.0, PD: 1.0, SA: 1.0, BL1: 1.0, FL1: 0.95, PPL: 0.85, DED: 0.85,
+  ELC: 0.80, BSA: 0.85,
   WC: 1.0, EC: 1.0,
   DEFAULT: 0.80,
 };
