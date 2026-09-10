@@ -1,13 +1,15 @@
 import { config } from '../config.js';
 import { calculateMatchPrediction } from './predictorEngine.js';
 import { getTeamStats, currentSeason } from './externalDataAggregator.js';
+import { fetchFromApi, getCached, setCache, DEFAULT_TTL } from './footballDataClient.js';
+import { getTeamHistory, compareByCommonOpponents } from './teamHistory.js';
+import { ingestMatches, getRating } from './ratingPool.js';
 
 /* ──────────────────────────────────────────────────────
    In-memory cache with TTL (Time To Live)
    Standings refresh every 60 min, H2H every 30 min
    ────────────────────────────────────────────────────── */
-const cache = new Map();
-const STANDINGS_TTL = 60 * 60 * 1000; // 1 hour
+const STANDINGS_TTL = DEFAULT_TTL; // 1 hora
 
 // Codigo de competicion en api-football (v3)
 const API_FOOTBALL_LEAGUE_IDS = {
@@ -33,19 +35,6 @@ function unknownLastMatchDate() {
   return null;
 }
 
-function getCached(key) {
-  const entry = cache.get(key);
-  if (entry && Date.now() - entry.ts < entry.ttl) return entry.data;
-  cache.delete(key);
-  return null;
-}
-
-// El TTL es por entrada: antes setCache aceptaba 2 argumentos y la
-// llamada de partidos le pasaba 86400 como tercero, que se descartaba
-// en silencio (esa cache expiraba en 1h, no en 24h).
-function setCache(key, data, ttlMs = STANDINGS_TTL) {
-  cache.set(key, { data, ts: Date.now(), ttl: ttlMs });
-}
 
 /* ──────────────────────────────────────────────────────
    Football-Data.org API Integration
@@ -53,50 +42,6 @@ function setCache(key, data, ttlMs = STANDINGS_TTL) {
    Rate-limit aware: reads X-Requests-Available-Minute
    and X-RequestCounter-Reset response headers.
    ────────────────────────────────────────────────────── */
-let rateLimitRemaining = 10;
-let rateLimitResetMs = 0;
-
-async function fetchFromApi(endpoint) {
-  if (!config.footballApiKey) return null;
-
-  // If we know we're out of quota, wait until reset
-  if (rateLimitRemaining <= 1 && rateLimitResetMs > Date.now()) {
-    const waitSec = Math.ceil((rateLimitResetMs - Date.now()) / 1000);
-    console.log(`[API] Rate limit reached. Waiting ${waitSec}s before next request...`);
-    await new Promise((r) => setTimeout(r, (waitSec + 1) * 1000));
-  }
-
-  try {
-    const res = await fetch(`${config.footballApiBaseUrl}${endpoint}`, {
-      headers: { 'X-Auth-Token': config.footballApiKey },
-    });
-
-    // Read rate-limiting headers from Football-Data.org
-    const remaining = res.headers.get('x-requests-available-minute');
-    const resetSeconds = res.headers.get('x-requestcounter-reset');
-    if (remaining !== null) rateLimitRemaining = parseInt(remaining, 10);
-    if (resetSeconds !== null) rateLimitResetMs = Date.now() + parseInt(resetSeconds, 10) * 1000;
-
-    // Handle 429 Too Many Requests
-    if (res.status === 429) {
-      const retrySec = parseInt(resetSeconds || '60', 10);
-      console.warn(`[API] 429 Too Many Requests. Retry in ${retrySec}s.`);
-      return null;
-    }
-
-    if (!res.ok) {
-      console.warn(`[API] ${res.status} on ${endpoint}`);
-      return null;
-    }
-
-    console.log(`[API] OK ${endpoint} (${rateLimitRemaining} req remaining this minute)`);
-    return await res.json();
-  } catch (err) {
-    console.warn(`[API] Network error: ${err.message}`);
-    return null;
-  }
-}
-
 function parseApiStandings(apiData, leagueId) {
   try {
     const table = apiData.standings?.[0]?.table || [];
@@ -295,9 +240,6 @@ export async function getLeagueStandings(leagueId = 'PL') {
   return fallback;
 }
 
-// Store in-flight promises to prevent duplicate concurrent API calls
-const inFlightRequests = new Map();
-
 /* ──────────────────────────────────────────────────────
    Public API: Head-to-Head
    ────────────────────────────────────────────────────── */
@@ -346,6 +288,7 @@ export async function getH2HHistory(homeTeamId, awayTeamId, leagueId = 'PL') {
             // Step 2: Use the matchId to query the explicit head2head endpoint
             const h2hData = await fetchFromApi(`/matches/${sharedMatch.id}/head2head?limit=15`);
             if (h2hData && h2hData.matches && h2hData.matches.length > 0) {
+              ingestMatches(h2hData.matches);
               h2hResult = formatApiH2H(homeTeam, awayTeam, h2hData.matches);
             }
           } catch (err) {
@@ -544,6 +487,18 @@ export async function getMatchPredictionDetails(homeTeamId, awayTeamId, leagueId
     enrichWithDomesticForm(rawAway, leagueId),
   ]);
 
+  // Historial completo de ambos equipos en TODAS las competiciones.
+  // Es la fuente principal del modelo: la tabla de clasificacion solo se
+  // usa como respaldo cuando un equipo no tiene historial descargable.
+  const [homeHistory, awayHistory] = await Promise.all([
+    getTeamHistory(homeTeam.id).catch(() => null),
+    getTeamHistory(awayTeam.id).catch(() => null),
+  ]);
+
+  // Rivales en comun: aunque no se hayan enfrentado entre ellos, si han
+  // jugado contra los mismos equipos se pueden comparar por ahi.
+  const commonOpponents = compareByCommonOpponents(homeHistory, awayHistory);
+
   const h2h = await getH2HHistory(homeTeamId, awayTeamId, leagueId);
   
   // Mapeo football-data.org -> api-football (ids de competicion distintos)
@@ -563,19 +518,39 @@ export async function getMatchPredictionDetails(homeTeamId, awayTeamId, leagueId
     h2h.matches,
     homeExternalStats,
     awayExternalStats,
-    { leagueId, isLiveData: standings.dataSource === 'live' }
+    {
+      leagueId,
+      isLiveData: standings.dataSource === 'live',
+      homeHistory,
+      awayHistory,
+      commonOpponents,
+    }
   );
 
   // Avisos honestos sobre de donde salen los datos de cada equipo.
   const warnings = [];
+  [[homeTeam, homeHistory], [awayTeam, awayHistory]].forEach(([t, h]) => {
+    if (h?.known) {
+      // Con historial propio el equipo ya no depende de la tabla.
+      if (h.count < 6) {
+        warnings.push(`${t.name}: solo ${h.count} partidos en el historial descargable, la estimacion es debil.`);
+      }
+      return;
+    }
+    if (!h || !h.known) {
+      warnings.push(`${t.name}: sin historial de partidos disponible en la API. El modelo solo puede asumir un equipo promedio.`);
+    }
+  });
+
+  // El aviso de "sin partidos en esta competicion" solo tiene sentido si
+  // ademas no hemos podido recuperar historial: con 50 partidos
+  // descargados da igual que la tabla de la competicion este a cero.
+  const histFor = (t) => (t.id === homeTeam.id ? homeHistory : awayHistory);
   [homeTeam, awayTeam].forEach((t) => {
+    if (histFor(t)?.known && histFor(t).count >= 6) return;
     if (t.statsSource === 'domestic') {
       warnings.push(
         `${t.name}: sin partidos jugados en esta competicion. Se usa su rendimiento en ${t.statsSourceLeague} (${t.domesticPosition}o de ${t.domesticTeams}, ${t.played} partidos).`
-      );
-    } else if (t.statsSource === 'none') {
-      warnings.push(
-        `${t.name}: sin datos. No juega en ninguna de las ligas cubiertas y aun no ha disputado partidos en esta competicion, asi que el modelo solo puede asumir un equipo promedio.`
       );
     }
   });
@@ -584,6 +559,11 @@ export async function getMatchPredictionDetails(homeTeamId, awayTeamId, leagueId
     matchInfo: { league: standings.league, homeTeam, awayTeam },
     h2h,
     prediction,
+    commonOpponents,
+    ratings: {
+      home: getRating(homeTeam.id),
+      away: getRating(awayTeam.id),
+    },
     dataWarnings: warnings,
     dataSource: standings.dataSource,
   };

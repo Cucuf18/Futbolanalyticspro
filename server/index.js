@@ -6,6 +6,7 @@ import fs from 'fs';
 import { config } from './config.js';
 import { getLeagueStandings, getH2HHistory, getMatchPredictionDetails } from './services/sportsApi.js';
 import { learn, getWeights, getMarketReport } from './services/weightOptimizer.js';
+import { getPoolStats } from './services/ratingPool.js';
 import { getTeamStats } from './services/externalDataAggregator.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -83,6 +84,15 @@ app.post('/api/learn', (req, res) => {
     const { history } = req.body;
     const updatedWeights = learn(history);
     res.json({ success: true, weights: updatedWeights });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Estado de la bolsa de ratings Elo
+app.get('/api/ratings', (req, res) => {
+  try {
+    res.json({ success: true, pool: getPoolStats() });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }

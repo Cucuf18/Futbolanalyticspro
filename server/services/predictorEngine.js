@@ -1,5 +1,6 @@
 import { getWeights, getMarketReliability } from './weightOptimizer.js';
 import { getLeagueProfile, getSignatureBonus, getSignatureNote } from './leagueProfiles.js';
+import { getRating, eloToXgMultiplier } from './ratingPool.js';
 import {
   poisson,
   lineProbability,
@@ -626,18 +627,31 @@ export function calculateMatchPrediction(
   const leagueProfile = getLeagueProfile(leagueId);
   const totalTeams = leagueProfile.teamsCount;
 
+  const homeHistory = options.homeHistory || null;
+  const awayHistory = options.awayHistory || null;
+  const commonOpponents = options.commonOpponents || null;
+
+  // La forma y la fecha del ultimo partido salen ahora del historial
+  // real. La tabla de Champions devuelve la forma vacia para los 36
+  // equipos, y sin fecha de ultimo partido el calculo de fatiga estaba
+  // desactivado por completo.
+  const homeForm = homeHistory?.form?.length ? homeHistory.form : homeStats.form;
+  const awayForm = awayHistory?.form?.length ? awayHistory.form : awayStats.form;
+  const homeLastMatch = homeHistory?.lastMatchDate || homeStats.lastMatchDate;
+  const awayLastMatch = awayHistory?.lastMatchDate || awayStats.lastMatchDate;
+
   // Media goleadora REAL de la liga en lugar de un 1.38 universal.
   const leagueAvgGoals = leagueProfile.goalsPerTeam;
   // La ventaja de campo tambien es especifica de cada competicion.
   const homeAdvantage = leagueProfile.homeAdvantage * (weights.homeAdvantage / 1.14);
 
-  const homeFormRaw = calculateEMAMomentum(homeStats.form);
-  const awayFormRaw = calculateEMAMomentum(awayStats.form);
+  const homeFormRaw = calculateEMAMomentum(homeForm);
+  const awayFormRaw = calculateEMAMomentum(awayForm);
   const homeFormMultiplier = 1.0 + (homeFormRaw - 1.0) * weights.emaWeight;
   const awayFormMultiplier = 1.0 + (awayFormRaw - 1.0) * weights.emaWeight;
 
-  const homeFatigueRaw = calculateFatiguePenalty(homeStats.lastMatchDate);
-  const awayFatigueRaw = calculateFatiguePenalty(awayStats.lastMatchDate);
+  const homeFatigueRaw = calculateFatiguePenalty(homeLastMatch);
+  const awayFatigueRaw = calculateFatiguePenalty(awayLastMatch);
   const homeFatigue = homeFatigueRaw < 1.0 ? 1.0 - (1.0 - homeFatigueRaw) * weights.fatigueMultiplier : 1.0;
   const awayFatigue = awayFatigueRaw < 1.0 ? 1.0 - (1.0 - awayFatigueRaw) * weights.fatigueMultiplier : 1.0;
 
@@ -652,10 +666,46 @@ export function calculateMatchPrediction(
   const smoothedAwayGF = awayStats.goalsFor + leagueAvgGoals * awaySmoothing;
   const smoothedAwayGA = awayStats.goalsAgainst + leagueAvgGoals * awaySmoothing;
 
-  const homeAttack = ((smoothedHomeGF / smoothedHomePlayed) / leagueAvgGoals) * homeFormMultiplier * homeFatigue * weights.homeAttackMultiplier;
-  const homeDefense = (smoothedHomeGA / smoothedHomePlayed) / leagueAvgGoals;
-  const awayAttack = ((smoothedAwayGF / smoothedAwayPlayed) / leagueAvgGoals) * awayFormMultiplier * awayFatigue * weights.awayAttackMultiplier;
-  const awayDefense = (smoothedAwayGA / smoothedAwayPlayed) / leagueAvgGoals;
+  /**
+   * Fuerza ofensiva y defensiva.
+   *
+   * Fuente principal: el historial real de partidos en TODAS las
+   * competiciones, con decaimiento temporal, peso por competicion,
+   * ajuste por la calidad del rival y splits de local/visitante.
+   *
+   * La tabla de clasificacion solo se usa como respaldo. Antes era la
+   * unica fuente, y por eso en la jornada 1 de Champions todos los
+   * equipos parecian identicos: la tabla estaba a cero para todos.
+   */
+  const historyRate = (history, side, kind) => {
+    if (!history?.known || history.count < 3) return null;
+    const value = history[kind][side] ?? history[kind].overall;
+    return value / leagueAvgGoals;
+  };
+
+  const tableHomeAttack = (smoothedHomeGF / smoothedHomePlayed) / leagueAvgGoals;
+  const tableHomeDefense = (smoothedHomeGA / smoothedHomePlayed) / leagueAvgGoals;
+  const tableAwayAttack = (smoothedAwayGF / smoothedAwayPlayed) / leagueAvgGoals;
+  const tableAwayDefense = (smoothedAwayGA / smoothedAwayPlayed) / leagueAvgGoals;
+
+  // Cuanto peso damos al historial frente a la tabla: con 20 partidos o
+  // mas el historial manda casi por completo.
+  const blend = (history, tableValue, side, kind) => {
+    const fromHistory = historyRate(history, side, kind);
+    if (fromHistory === null) return tableValue;
+    const w = Math.min(0.85, (history.count / 20) * 0.85);
+    return fromHistory * w + tableValue * (1 - w);
+  };
+
+  const homeAttackBase = blend(homeHistory, tableHomeAttack, 'home', 'attack');
+  const homeDefenseBase = blend(homeHistory, tableHomeDefense, 'home', 'defense');
+  const awayAttackBase = blend(awayHistory, tableAwayAttack, 'away', 'attack');
+  const awayDefenseBase = blend(awayHistory, tableAwayDefense, 'away', 'defense');
+
+  const homeAttack = homeAttackBase * homeFormMultiplier * homeFatigue * weights.homeAttackMultiplier;
+  const homeDefense = homeDefenseBase;
+  const awayAttack = awayAttackBase * awayFormMultiplier * awayFatigue * weights.awayAttackMultiplier;
+  const awayDefense = awayDefenseBase;
 
   let base_xG_Home = homeAttack * awayDefense * leagueAvgGoals * homeAdvantage;
   let base_xG_Away = awayAttack * homeDefense * leagueAvgGoals;
@@ -691,11 +741,37 @@ export function calculateMatchPrediction(
     base_xG_Away = base_xG_Away * formWeight + avgH2H_Away * h2hWeight;
   }
 
-  // ── 3. POWER INDEX ──
-  const homePI = calculatePowerIndex(homeStats.position, totalTeams);
-  const awayPI = calculatePowerIndex(awayStats.position, totalTeams);
-  base_xG_Home *= calculatePowerDifferential(homePI, awayPI);
-  base_xG_Away *= calculatePowerDifferential(awayPI, homePI);
+  // ── 3. JERARQUIA: ELO SI LO HAY, POSICION SI NO ──
+  // El Elo se alimenta de todos los partidos que la pagina ha visto, en
+  // cualquier competicion y temporada, asi que compara equipos que nunca
+  // se han enfrentado. La posicion en la tabla no puede hacer eso: en la
+  // jornada 1 los 36 equipos de Champions comparten puesto.
+  const homeRating = getRating(homeStats.id);
+  const awayRating = getRating(awayStats.id);
+  const eloUsable = homeRating.known && awayRating.known && Math.min(homeRating.matches, awayRating.matches) >= 4;
+
+  if (eloUsable) {
+    const conf = Math.min(homeRating.confidence, awayRating.confidence);
+    base_xG_Home *= eloToXgMultiplier(homeRating.elo, awayRating.elo, conf);
+    base_xG_Away *= eloToXgMultiplier(awayRating.elo, homeRating.elo, conf);
+  } else {
+    const homePI = calculatePowerIndex(homeStats.position, totalTeams);
+    const awayPI = calculatePowerIndex(awayStats.position, totalTeams);
+    base_xG_Home *= calculatePowerDifferential(homePI, awayPI);
+    base_xG_Away *= calculatePowerDifferential(awayPI, homePI);
+  }
+
+  // ── 3b. RIVALES EN COMUN ──
+  // Si ambos jugaron contra los mismos equipos, ese diferencial de goles
+  // es una comparacion directa aunque no se hayan visto nunca las caras.
+  if (commonOpponents && commonOpponents.count >= 2) {
+    // edge = cuantos goles de diferencia saco el local de ventaja sobre
+    // el visitante frente a los rivales compartidos.
+    const edge = clamp(commonOpponents.edge, -3, 3) * commonOpponents.confidence;
+    const shift = 1 + clamp(edge * 0.08, -0.22, 0.22);
+    base_xG_Home *= shift;
+    base_xG_Away /= shift;
+  }
 
   let xG_Home = Math.max(0.35, base_xG_Home);
   let xG_Away = Math.max(0.25, base_xG_Away);
@@ -741,9 +817,16 @@ export function calculateMatchPrediction(
   const pctBTTS = Math.round(probBTTS * 100);
 
   // ── 6. CALIDAD DE DATOS Y PERFIL DEL CRUCE ──
+  // El tamano de muestra ya no es "partidos en esta competicion" sino el
+  // historial real disponible, que es lo que de verdad alimenta al modelo.
+  const effectiveSample = Math.min(
+    homeHistory?.known ? homeHistory.count : homeStats.played || 0,
+    awayHistory?.known ? awayHistory.count : awayStats.played || 0
+  );
+
   const dataQuality = computeDataQuality({
-    played: Math.min(homeStats.played || 0, awayStats.played || 0),
-    h2hCount: h2hHistory.length,
+    played: effectiveSample,
+    h2hCount: h2hHistory.length + (commonOpponents ? commonOpponents.count * 2 : 0),
     hasExternalStats: Boolean(homeExt && awayExt),
     isLiveData: options.isLiveData === true,
   });
@@ -846,6 +929,24 @@ export function calculateMatchPrediction(
       },
     },
     leagueTendencies: leagueProfile.signatureMarkets,
+    ratings: eloUsable
+      ? {
+          home: homeRating.elo,
+          away: awayRating.elo,
+          homeMatches: homeRating.matches,
+          awayMatches: awayRating.matches,
+          diff: homeRating.elo - awayRating.elo,
+        }
+      : null,
+    historySummary: {
+      home: homeHistory?.known
+        ? { partidos: homeHistory.count, forma: homeHistory.form, descanso: homeHistory.restDays, competiciones: homeHistory.competitions }
+        : null,
+      away: awayHistory?.known
+        ? { partidos: awayHistory.count, forma: awayHistory.form, descanso: awayHistory.restDays, competiciones: awayHistory.competitions }
+        : null,
+    },
+    commonOpponents,
     fairOdds,
     marketOdds,
     topPredictions,

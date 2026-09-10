@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { useBetSlip } from '../context/BetSlipContext';
 import DepthMetrics from './DepthMetrics';
 import MatchPicks from './MatchPicks';
+import EvidencePanel from './EvidencePanel';
 
 export default function PredictionPanel({ predictionData, isPremium, onOpenPremiumModal }) {
   const { addToSlip } = useBetSlip();
@@ -23,6 +24,9 @@ export default function PredictionPanel({ predictionData, isPremium, onOpenPremi
     leagueTendencies = [],
     expectedEvents = null,
     expectedEventsByTeam = null,
+    ratings = null,
+    historySummary = null,
+    commonOpponents = null,
     league = null,
   } = prediction || {};
 
@@ -302,6 +306,13 @@ export default function PredictionPanel({ predictionData, isPremium, onOpenPremi
             </div>
           </div>
         </div>
+
+        <EvidencePanel
+          matchInfo={matchInfo}
+          ratings={ratings}
+          historySummary={historySummary}
+          commonOpponents={commonOpponents}
+        />
 
         {/* ========== EVENTOS ESPERADOS DEL PARTIDO ========== */}
         {expectedEvents && (
