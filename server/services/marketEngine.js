@@ -226,14 +226,18 @@ export function buildMatchProfile({
   // --- TARJETAS ---
   // La brecha de nivel sube las tarjetas del equipo debil (mas faltas
   // tacticas), y el perfil disciplinario de la liga marca la base.
+  // El margen era demasiado estrecho (solo un 15% de recorrido por la
+  // fuerza del equipo), asi que la linea de tarjetas salia casi identica
+  // en todos los partidos. Se amplia y se mete la solidez defensiva: un
+  // equipo al que le hacen muchos goles defiende mal y corta con falta.
   const homeCardRatio = homeExt?.avgYellowCards
     ? ratio(homeExt.avgYellowCards, profile.cardsPerTeam)
-    : 1.05 - homeStrength * 0.15;
+    : 0.85 + (1 - homeStrength) * 0.35 + (homeGAr - 1) * 0.18;
   const awayCardRatio = awayExt?.avgYellowCards
     ? ratio(awayExt.avgYellowCards, profile.cardsPerTeam)
-    : 1.08 - awayStrength * 0.15;
-  const homeCards = matchupMean(profile.cardsPerTeam, homeCardRatio, 1 + gap * 0.15, derbyCards);
-  const awayCards = matchupMean(profile.cardsPerTeam, awayCardRatio, 1 + gap * 0.20, derbyCards * 1.05);
+    : 0.90 + (1 - awayStrength) * 0.35 + (awayGAr - 1) * 0.18;
+  const homeCards = matchupMean(profile.cardsPerTeam, homeCardRatio, 1 + gap * 0.30, derbyCards);
+  const awayCards = matchupMean(profile.cardsPerTeam, awayCardRatio, 1 + gap * 0.38, derbyCards * 1.05);
 
   // --- FALTAS ---
   const homeFoulRatio = homeExt?.avgFouls ? ratio(homeExt.avgFouls, profile.foulsPerTeam) : 1.02 - homeStrength * 0.10;
@@ -266,8 +270,25 @@ export function buildMatchProfile({
     : awaySotBase;
 
   // --- OFFSIDES ---
-  const homeOffsides = matchupMean(profile.offsidesPerTeam, 0.85 + homeGFr * 0.25, 1, 1);
-  const awayOffsides = matchupMean(profile.offsidesPerTeam, 0.85 + awayGFr * 0.25, 1, 1);
+  // El factor rival estaba puesto a 1 fijo y no habia ni dominancia ni
+  // ventaja de campo: el resultado solo dependia de los goles propios y
+  // salia practicamente el mismo numero en todos los partidos.
+  //
+  // Un fuera de juego lo provoca la linea defensiva del RIVAL: contra un
+  // equipo fuerte, que presiona arriba y adelanta la linea, se cae mucho
+  // mas en fuera de juego que contra uno replegado en su area.
+  const homeOffsides = matchupMean(
+    profile.offsidesPerTeam,
+    0.75 + homeGFr * 0.35,
+    0.70 + awayStrength * 0.60,
+    dominance * profile.homeAdvantage * 0.98
+  );
+  const awayOffsides = matchupMean(
+    profile.offsidesPerTeam,
+    0.75 + awayGFr * 0.35,
+    0.70 + homeStrength * 0.60,
+    dominance * 0.96
+  );
 
   /**
    * Techos y suelos de realidad.
@@ -379,6 +400,30 @@ export function expectedValue(probPct, odds) {
   return Number(((probPct / 100) * odds - 1).toFixed(3));
 }
 
+/**
+ * Cuanto se sale ESTE partido de la norma de su liga, de 0 a 12 puntos.
+ *
+ * Sin esto el motor elegia siempre el mercado con mayor probabilidad
+ * absoluta, y esos son justamente los que valen para cualquier partido
+ * ("no hay empate" sale ~75% en todos lados). El resultado eran los
+ * mismos tres picks con los mismos numeros en cruces distintos.
+ *
+ * Ahora se premia que el partido se desvie de su liga: si aqui se esperan
+ * 14 corners y la media de la competicion son 10.4, ese pick dice algo
+ * de ESTE partido y sube. Si coincide con la media, no aporta y baja.
+ */
+export function distinctiveness(mean, leagueBaseline) {
+  if (!Number.isFinite(mean) || !Number.isFinite(leagueBaseline) || leagueBaseline <= 0) return 0;
+  return clamp(Math.abs(mean / leagueBaseline - 1) * 40, 0, 12);
+}
+
+/** Version para mercados que no son de conteo: se compara la probabilidad
+ *  con la tasa base tipica de ese mercado en el futbol. */
+export function distinctivenessFromProb(probPct, baselinePct) {
+  if (!Number.isFinite(probPct) || !Number.isFinite(baselinePct)) return 0;
+  return clamp(Math.abs(probPct - baselinePct) * 0.45, 0, 12);
+}
+
 export function buildCountPick({
   marketType,
   typePrefix,
@@ -387,11 +432,20 @@ export function buildCountPick({
   profile,
   reasons = [],
   correlationGroup,
+  leagueBaseline = null,
 }) {
   if (!found) return null;
   const note = getSignatureNote(profile, marketType);
   const allReasons = [...reasons];
   if (note) allReasons.push(`Tendencia de liga: ${note}`);
+
+  const distinct = leagueBaseline ? distinctiveness(found.mean, leagueBaseline) : 0;
+  if (distinct >= 6 && leagueBaseline) {
+    const pct = Math.round((found.mean / leagueBaseline - 1) * 100);
+    allReasons.push(
+      `Este cruce se desvia un ${Math.abs(pct)}% ${pct > 0 ? 'por encima' : 'por debajo'} de la media de la competicion en este mercado.`
+    );
+  }
 
   return {
     type: `${typePrefix}_${found.side}_${String(found.line).replace('.', '')}`,
@@ -408,7 +462,8 @@ export function buildCountPick({
     side: found.side,
     marketType,
     correlationGroup: correlationGroup || marketType,
-    selectionScore: found.probability + getSignatureBonus(profile, marketType),
+    distinctiveness: Number(distinct.toFixed(1)),
+    selectionScore: found.probability + getSignatureBonus(profile, marketType) + distinct,
     evThreshold: 'Estadistico',
     reasons: allReasons.filter(Boolean),
   };

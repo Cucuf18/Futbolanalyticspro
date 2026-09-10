@@ -8,7 +8,7 @@ export default function PredictionPanel({ predictionData, isPremium, onOpenPremi
   
   if (!predictionData || !predictionData.prediction) return null;
 
-  const { matchInfo, h2h, prediction } = predictionData;
+  const { matchInfo, h2h, prediction, dataWarnings = [] } = predictionData;
 
   const {
     probabilities = {},
@@ -75,6 +75,31 @@ export default function PredictionPanel({ predictionData, isPremium, onOpenPremi
         opacity: isPremium ? 1 : 0.45,
         transition: 'var(--transition-smooth)',
       }}>
+
+        {/* Aviso honesto sobre el origen de los datos de cada equipo */}
+        {dataWarnings.length > 0 && (
+          <div style={{
+            background: 'rgba(255, 170, 0, 0.08)',
+            border: '1px solid rgba(255, 170, 0, 0.35)',
+            borderRadius: '12px',
+            padding: '14px 16px',
+            marginBottom: '20px',
+          }}>
+            <div style={{ fontSize: '11px', fontWeight: 800, color: 'var(--accent-gold)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '8px' }}>
+              Atencion: datos limitados en este partido
+            </div>
+            {dataWarnings.map((w, i) => (
+              <div key={i} style={{ fontSize: '12px', color: 'var(--text-secondary)', lineHeight: 1.5, marginBottom: '4px' }}>
+                • {w}
+              </div>
+            ))}
+            <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginTop: '8px', lineHeight: 1.5 }}>
+              Cuando un equipo no tiene historial, el modelo lo trata como un equipo promedio de la
+              competicion. Los picks de este partido valen mucho menos que los de un partido con
+              temporada avanzada.
+            </div>
+          </div>
+        )}
 
         {/* ========== MATCH PICKS SECTION ========== */}
         <MatchPicks

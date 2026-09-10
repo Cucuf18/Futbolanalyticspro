@@ -11,6 +11,7 @@ import {
   marketOddsFrom,
   priceSelection,
   buildCountPick,
+  distinctivenessFromProb,
   MIN_USEFUL_ODDS,
   clamp,
 } from './marketEngine.js';
@@ -277,6 +278,14 @@ function buildCandidatePicks(ctx) {
   const band = [58, 93];
 
   /**
+   * Tasas base del futbol para los mercados que no son de conteo. Sirven
+   * para medir si un pick dice algo de ESTE partido o si saldria igual en
+   * cualquier otro (un "no hay empate" ronda el 74% en todas las ligas y
+   * por eso aparecia en la mitad de los partidos).
+   */
+  const BASE_RATES = { HOME_WIN: 44, AWAY_WIN: 29, DC_1X: 71, DC_X2: 55, DC_12: 74, BTTS: 51, AH: 50, SCORES: 76 };
+
+  /**
    * Senal direccional del cruce: se compara la media esperada con la
    * base de la liga. Si este partido promete mas corners que la media de
    * su competicion, se prioriza el Over; si promete menos, el Under.
@@ -294,6 +303,8 @@ function buildCandidatePicks(ctx) {
       label: `Victoria Local (${homeStats.name})`,
       probability: pHome,
       rawProbability: probs.homeWin,
+      distinctiveness: distinctivenessFromProb(pHome, BASE_RATES.HOME_WIN),
+      selectionScore: pHome + distinctivenessFromProb(pHome, BASE_RATES.HOME_WIN),
       marketType: 'RESULTADO',
       correlationGroup: 'RESULTADO',
       evThreshold: 'EV+',
@@ -309,6 +320,8 @@ function buildCandidatePicks(ctx) {
       label: `Victoria Visitante (${awayStats.name})`,
       probability: pAway,
       rawProbability: probs.awayWin,
+      distinctiveness: distinctivenessFromProb(pAway, BASE_RATES.AWAY_WIN),
+      selectionScore: pAway + distinctivenessFromProb(pAway, BASE_RATES.AWAY_WIN),
       marketType: 'RESULTADO',
       correlationGroup: 'RESULTADO',
       evThreshold: 'EV+',
@@ -334,6 +347,8 @@ function buildCandidatePicks(ctx) {
         label: o.label,
         probability: prob,
         rawProbability: Math.min(97, Math.round(o.raw)),
+        distinctiveness: distinctivenessFromProb(prob, BASE_RATES['DC_' + o.key]),
+        selectionScore: prob + distinctivenessFromProb(prob, BASE_RATES['DC_' + o.key]),
         marketType: 'DOBLE',
         correlationGroup: 'RESULTADO',
         evThreshold: 'Seguro',
@@ -352,6 +367,8 @@ function buildCandidatePicks(ctx) {
         label: `Handicap Asiatico ${isHome ? homeName : awayName}: ${isHome ? asianHandicap.homeLabel : asianHandicap.awayLabel}`,
         probability: prob,
         rawProbability: isHome ? asianHandicap.homeProb : asianHandicap.awayProb,
+        distinctiveness: distinctivenessFromProb(prob, BASE_RATES.AH),
+        selectionScore: prob + distinctivenessFromProb(prob, BASE_RATES.AH),
         marketType: 'HANDICAP',
         correlationGroup: 'RESULTADO',
         evThreshold: 'EV+',
@@ -367,6 +384,7 @@ function buildCandidatePicks(ctx) {
     marketType: 'GOLES',
     typePrefix: 'GOALS',
     found: goalsFound,
+    leagueBaseline: leagueProfile.goalsPerTeam * 2,
     profile: leagueProfile,
     labelFor: (f) => `${sideWord(f.side)} ${f.line} Goles en el Partido`,
     reasons: goalsFound ? [`Goles esperados en este cruce: ${totalXG.toFixed(2)} (${homeName} ${xG_Home.toFixed(2)} - ${xG_Away.toFixed(2)} ${awayName}).`] : [],
@@ -385,6 +403,8 @@ function buildCandidatePicks(ctx) {
         label: `${t.name} marca al menos 1 gol`,
         probability: prob,
         rawProbability: Math.round(raw),
+        distinctiveness: distinctivenessFromProb(prob, BASE_RATES.SCORES),
+        selectionScore: prob + distinctivenessFromProb(prob, BASE_RATES.SCORES),
         marketType: 'GOLES',
         correlationGroup: 'GOLES',
         evThreshold: 'Estadistico',
@@ -407,7 +427,8 @@ function buildCandidatePicks(ctx) {
       rawProbability: bttsSide.raw,
       marketType: 'BTTS',
       correlationGroup: 'GOLES',
-      selectionScore: bttsSide.prob + getSignatureBonus(leagueProfile, 'BTTS'),
+      distinctiveness: distinctivenessFromProb(bttsSide.prob, BASE_RATES.BTTS),
+      selectionScore: bttsSide.prob + getSignatureBonus(leagueProfile, 'BTTS') + distinctivenessFromProb(bttsSide.prob, BASE_RATES.BTTS),
       evThreshold: 'EV+',
       reasons: [bttsSide.why, getSignatureNote(leagueProfile, 'BTTS')].filter(Boolean),
     });
@@ -419,6 +440,7 @@ function buildCandidatePicks(ctx) {
     marketType: 'CORNERS',
     typePrefix: 'CORNERS',
     found: cornersFound,
+    leagueBaseline: leagueProfile.cornersPerTeam * 2,
     profile: leagueProfile,
     labelFor: (f) => `${sideWord(f.side)} ${f.line} Corners`,
     reasons: cornersFound ? [
@@ -436,6 +458,7 @@ function buildCandidatePicks(ctx) {
     marketType: 'CORNERS',
     typePrefix: `CORNERS_${dominant.key}`,
     found: domCorners,
+    leagueBaseline: leagueProfile.cornersPerTeam,
     profile: leagueProfile,
     correlationGroup: 'CORNERS',
     labelFor: (f) => `${dominant.name}: ${sideWord(f.side)} ${f.line} Corners`,
@@ -448,6 +471,7 @@ function buildCandidatePicks(ctx) {
     marketType: 'TARJETAS',
     typePrefix: 'CARDS',
     found: cardsFound,
+    leagueBaseline: leagueProfile.cardsPerTeam * 2,
     profile: leagueProfile,
     labelFor: (f) => `${sideWord(f.side)} ${f.line} Tarjetas Amarillas`,
     reasons: cardsFound ? [
@@ -463,6 +487,7 @@ function buildCandidatePicks(ctx) {
     marketType: 'FALTAS',
     typePrefix: 'FOULS',
     found: foulsFound,
+    leagueBaseline: leagueProfile.foulsPerTeam * 2,
     profile: leagueProfile,
     labelFor: (f) => `${sideWord(f.side)} ${f.line} Faltas`,
     reasons: foulsFound ? [`Faltas esperadas en el cruce: ${matchProfile.fouls.total.toFixed(1)}.`] : [],
@@ -474,6 +499,7 @@ function buildCandidatePicks(ctx) {
     marketType: 'TIROS',
     typePrefix: 'SHOTS',
     found: shotsFound,
+    leagueBaseline: leagueProfile.shotsPerTeam * 2,
     profile: leagueProfile,
     labelFor: (f) => `${sideWord(f.side)} ${f.line} Remates Totales`,
     reasons: shotsFound ? [`Remates esperados: ${matchProfile.shots.total.toFixed(1)} (${homeName} ${matchProfile.shots.home.toFixed(1)} / ${awayName} ${matchProfile.shots.away.toFixed(1)}).`] : [],
@@ -491,6 +517,7 @@ function buildCandidatePicks(ctx) {
       found,
       profile: leagueProfile,
       correlationGroup: 'TIROS',
+      leagueBaseline: leagueProfile.sotPerTeam,
       labelFor: (f) => `${t.name}: ${sideWord(f.side)} ${f.line} Tiros a Puerta`,
       reasons: found ? [`Tiros a puerta esperados de ${t.name}: ${t.mean.toFixed(1)}.`] : [],
     }));
@@ -502,6 +529,7 @@ function buildCandidatePicks(ctx) {
     marketType: 'OFFSIDES',
     typePrefix: 'OFFSIDES',
     found: offsidesFound,
+    leagueBaseline: leagueProfile.offsidesPerTeam * 2,
     profile: leagueProfile,
     labelFor: (f) => `${sideWord(f.side)} ${f.line} Fueras de Juego`,
     reasons: offsidesFound ? [`Fueras de juego esperados: ${matchProfile.offsides.total.toFixed(1)}.`] : [],

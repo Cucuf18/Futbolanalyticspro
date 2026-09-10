@@ -458,12 +458,92 @@ function formatApiH2H(homeTeam, awayTeam, apiMatches) {
 }
 
 /* ──────────────────────────────────────────────────────
+   Refuerzo con forma domestica
+   ────────────────────────────────────────────────────── */
+
+// Ligas domesticas que ya sabemos consultar, de mayor a menor nivel medio.
+const DOMESTIC_LEAGUES = ['PL', 'PD', 'SA', 'BL1'];
+
+/**
+ * En la fase de liga de la Champions, en la jornada 1 TODOS los equipos
+ * llegan con 0 partidos, 0 goles y la misma posicion (empatados a cero).
+ * El motor recibia entonces cifras identicas para el Bayern y para el
+ * Sabah FK, asi que era matematicamente imposible que diera picks
+ * distintos: salian los mismos tres mercados con los mismos numeros en
+ * todos los partidos.
+ *
+ * Los equipos SI han jugado en su liga. football-data.org usa el mismo id
+ * de equipo en todas las competiciones, asi que se puede recuperar su
+ * rendimiento domestico y usarlo como base.
+ *
+ * Devuelve el equipo enriquecido y marca de donde salen los datos, para
+ * que la interfaz pueda avisar cuando no hemos encontrado nada.
+ */
+async function enrichWithDomesticForm(team, leagueId) {
+  if (!team) return team;
+  // Con 3 o mas partidos en la propia competicion ya hay senal suficiente.
+  if (leagueId !== 'CL' || team.played >= 3) {
+    return { ...team, statsSource: 'competition' };
+  }
+
+  for (const domestic of DOMESTIC_LEAGUES) {
+    let standings;
+    try {
+      standings = await getLeagueStandings(domestic);
+    } catch {
+      continue;
+    }
+    if (standings.dataSource !== 'live') continue;
+
+    const row = standings.teams.find((t) => t.id === team.id);
+    if (!row || !row.played) continue;
+
+    const domesticTeams = standings.teams.length || 20;
+    // La posicion domestica se traslada a la escala de la Champions. Se
+    // comprime al tramo alto porque cualquier equipo clasificado para
+    // esta competicion esta, por definicion, por encima de la media.
+    const percentile = (row.position - 1) / Math.max(domesticTeams - 1, 1);
+    const clTeams = 36;
+    const mappedPosition = Math.max(1, Math.round(1 + percentile * (clTeams - 1) * 0.70));
+
+    return {
+      ...team,
+      played: row.played,
+      won: row.won,
+      drawn: row.drawn,
+      lost: row.lost,
+      goalsFor: row.goalsFor,
+      goalsAgainst: row.goalsAgainst,
+      goalDifference: row.goalDifference,
+      position: mappedPosition,
+      form: row.form && row.form.length ? row.form : team.form,
+      statsSource: 'domestic',
+      statsSourceLeague: domestic,
+      domesticPosition: row.position,
+      domesticTeams,
+    };
+  }
+
+  // No lo encontramos en ninguna liga soportada: se queda como esta, pero
+  // marcado para que no se presente como si tuviera respaldo estadistico.
+  return { ...team, statsSource: team.played > 0 ? 'competition' : 'none' };
+}
+
+/* ──────────────────────────────────────────────────────
    Public API: Match Prediction
    ────────────────────────────────────────────────────── */
 export async function getMatchPredictionDetails(homeTeamId, awayTeamId, leagueId = 'PL') {
   const standings = await getLeagueStandings(leagueId);
-  const homeTeam = standings.teams.find((t) => t.id === Number(homeTeamId)) || standings.teams[0];
-  const awayTeam = standings.teams.find((t) => t.id === Number(awayTeamId)) || standings.teams[1];
+  const rawHome = standings.teams.find((t) => t.id === Number(homeTeamId)) || standings.teams[0];
+  const rawAway = standings.teams.find((t) => t.id === Number(awayTeamId)) || standings.teams[1];
+
+  // Si el equipo no tiene partidos en esta competicion, se recupera su
+  // rendimiento en su liga domestica antes de predecir nada.
+  const [homeTeam, awayTeam] = await Promise.all([
+    enrichWithDomesticForm(rawHome, leagueId),
+    enrichWithDomesticForm(rawAway, leagueId),
+  ]);
+
   const h2h = await getH2HHistory(homeTeamId, awayTeamId, leagueId);
   
   // Mapeo football-data.org -> api-football (ids de competicion distintos)
@@ -486,10 +566,25 @@ export async function getMatchPredictionDetails(homeTeamId, awayTeamId, leagueId
     { leagueId, isLiveData: standings.dataSource === 'live' }
   );
 
+  // Avisos honestos sobre de donde salen los datos de cada equipo.
+  const warnings = [];
+  [homeTeam, awayTeam].forEach((t) => {
+    if (t.statsSource === 'domestic') {
+      warnings.push(
+        `${t.name}: sin partidos jugados en esta competicion. Se usa su rendimiento en ${t.statsSourceLeague} (${t.domesticPosition}o de ${t.domesticTeams}, ${t.played} partidos).`
+      );
+    } else if (t.statsSource === 'none') {
+      warnings.push(
+        `${t.name}: sin datos. No juega en ninguna de las ligas cubiertas y aun no ha disputado partidos en esta competicion, asi que el modelo solo puede asumir un equipo promedio.`
+      );
+    }
+  });
+
   return {
     matchInfo: { league: standings.league, homeTeam, awayTeam },
     h2h,
     prediction,
+    dataWarnings: warnings,
     dataSource: standings.dataSource,
   };
 }
