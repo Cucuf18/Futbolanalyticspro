@@ -9,6 +9,7 @@ import { learn, getWeights, getMarketReport } from './services/weightOptimizer.j
 import { getPoolStats } from './services/ratingPool.js';
 import { settlePending, getReport, getPending } from './services/backtest.js';
 import { getTeamStats } from './services/externalDataAggregator.js';
+import { initPersistence, usingDatabase } from './services/persistence.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -23,6 +24,7 @@ app.get('/api/health', (req, res) => {
   res.json({
     status: 'OK',
     service: 'FutbolAnalytics Predictive Engine API',
+    persistence: usingDatabase() ? 'postgres' : 'archivos-locales',
     timestamp: new Date().toISOString(),
   });
 });
@@ -180,6 +182,8 @@ async function autoSettle() {
 // arranque) y despues cada 6 horas.
 setTimeout(autoSettle, 60 * 1000).unref?.();
 setInterval(autoSettle, SETTLE_INTERVAL_MS).unref?.();
+
+await initPersistence();
 
 app.listen(config.port, () => {
   console.log(`=======================================================`);

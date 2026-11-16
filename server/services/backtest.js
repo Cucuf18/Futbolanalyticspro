@@ -1,12 +1,6 @@
-import fs from 'fs';
-import path from 'path';
-import { fileURLToPath } from 'url';
 import { fetchFromApi } from './footballDataClient.js';
 import { ingestMatches } from './ratingPool.js';
-
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
-const STORE_PATH = path.join(__dirname, '../data/predictions.json');
+import { readBlob, writeBlob } from './persistence.js';
 
 /**
  * BACKTEST AUTOMATICO
@@ -29,25 +23,27 @@ const STORE_PATH = path.join(__dirname, '../data/predictions.json');
  * ninguna de las dos APIs gratuitas da esas estadisticas.
  */
 
-const MAX_STORED = 5000;
+// Limite de seguridad. Antes eran 5000 y se borraban las mas antiguas,
+// lo que falseaba el historial publico: ahora el techo es mucho mayor.
+const MAX_STORED = 20000;
 // Margen tras el inicio antes de intentar resolver (partido + descuento).
 const SETTLE_DELAY_MS = 3 * 60 * 60 * 1000;
+// Una prediccion sin partido posterior tras estos dias se descarta del
+// informe (se hizo con el partido ya empezado, o el cruce no se jugo).
+const EXPIRE_AFTER_MS = 45 * 24 * 60 * 60 * 1000;
 
 let store = null;
 
 function load() {
   if (store) return store;
-  try {
-    if (fs.existsSync(STORE_PATH)) {
-      store = JSON.parse(fs.readFileSync(STORE_PATH, 'utf8'));
-      if (!Array.isArray(store.predictions)) store.predictions = [];
-      return store;
-    }
-  } catch (err) {
-    console.error('[Backtest] No se pudo leer el historial:', err.message);
-  }
-  store = { predictions: [], updatedAt: null };
+  const saved = readBlob('predictions');
+  store = saved && Array.isArray(saved.predictions) ? saved : { predictions: [], updatedAt: null };
   return store;
+}
+
+/** Solo para tests: fuerza a releer del almacenamiento. */
+export function _resetStoreForTests() {
+  store = null;
 }
 
 let saveTimer = null;
@@ -56,16 +52,11 @@ function scheduleSave() {
   saveTimer = setTimeout(() => {
     saveTimer = null;
     const s = load();
-    try {
-      const dir = path.dirname(STORE_PATH);
-      if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-      s.predictions = s.predictions.slice(-MAX_STORED);
-      s.updatedAt = new Date().toISOString();
-      fs.writeFileSync(STORE_PATH, JSON.stringify(s), 'utf8');
-    } catch (err) {
-      console.error('[Backtest] No se pudo guardar:', err.message);
-    }
+    s.predictions = s.predictions.slice(-MAX_STORED);
+    s.updatedAt = new Date().toISOString();
+    writeBlob('predictions', s);
   }, 2000);
+  saveTimer.unref?.();
 }
 
 const keyOf = (leagueId, homeId, awayId) => `${leagueId}:${homeId}:${awayId}`;
@@ -168,6 +159,27 @@ export function gradePick(settle, homeGoals, awayGoals) {
 }
 
 /**
+ * Elige el partido real que corresponde a una prediccion.
+ * Regla anti-trampa: el partido tiene que EMPEZAR DESPUES de que se
+ * generara la prediccion. Antes se toleraban 12 h de margen, y un pick
+ * hecho con el partido ya en juego podia puntuar con un resultado casi
+ * conocido. Si hay varios cruces, se toma el primero tras la prediccion.
+ */
+export function findMatchForPrediction(rec, matches) {
+  const predictedAt = new Date(rec.createdAt).getTime();
+  return (
+    matches
+      .filter(
+        (m) =>
+          m.homeTeam?.id === rec.homeTeamId &&
+          m.awayTeam?.id === rec.awayTeamId &&
+          new Date(m.utcDate).getTime() > predictedAt
+      )
+      .sort((x, y) => new Date(x.utcDate) - new Date(y.utcDate))[0] || null
+  );
+}
+
+/**
  * Busca los partidos ya terminados de cada competicion pendiente y
  * resuelve las predicciones que les correspondan.
  */
@@ -175,11 +187,23 @@ export async function settlePending() {
   const s = load();
   const now = Date.now();
 
+  // Descartar las que nunca tendran partido valido (ver EXPIRE_AFTER_MS).
+  let expired = 0;
+  for (const p of s.predictions) {
+    if (!p.settled && now - new Date(p.createdAt).getTime() > EXPIRE_AFTER_MS) {
+      p.settled = true;
+      p.expired = true;
+      p.settledAt = new Date().toISOString();
+      expired++;
+    }
+  }
+  if (expired > 0) scheduleSave();
+
   const pending = s.predictions.filter(
     (p) => !p.settled && now - new Date(p.createdAt).getTime() > SETTLE_DELAY_MS
   );
   if (pending.length === 0) {
-    return { checked: 0, settled: 0, message: 'No hay predicciones pendientes de resolver.' };
+    return { checked: 0, settled: 0, expired, message: 'No hay predicciones pendientes de resolver.' };
   }
 
   const leagues = [...new Set(pending.map((p) => p.leagueId))];
@@ -198,15 +222,7 @@ export async function settlePending() {
     ingestMatches(matches);
 
     for (const rec of pending.filter((p) => p.leagueId === leagueId)) {
-      const predictedAt = new Date(rec.createdAt).getTime();
-      const match = matches.find(
-        (m) =>
-          m.homeTeam?.id === rec.homeTeamId &&
-          m.awayTeam?.id === rec.awayTeamId &&
-          // El partido tiene que ser posterior a la prediccion, si no
-          // estariamos puntuando con un resultado ya conocido.
-          new Date(m.utcDate).getTime() >= predictedAt - 12 * 3600 * 1000
-      );
+      const match = findMatchForPrediction(rec, matches);
       if (!match) continue;
 
       const hg = match.score?.fullTime?.home;
@@ -216,6 +232,7 @@ export async function settlePending() {
       rec.settled = true;
       rec.settledAt = new Date().toISOString();
       rec.matchId = match.id;
+      rec.matchDate = match.utcDate;
       rec.finalScore = `${hg}-${ag}`;
       rec.picks = rec.picks.map((p) => ({ ...p, hit: gradePick(p.settle, hg, ag) }));
       settled++;
@@ -223,7 +240,7 @@ export async function settlePending() {
   }
 
   if (settled > 0) scheduleSave();
-  return { checked: pending.length, settled };
+  return { checked: pending.length, settled, expired };
 }
 
 /**
@@ -231,8 +248,11 @@ export async function settlePending() {
  * por liga, y la curva de calibracion.
  */
 export function getReport() {
-  const s = load();
-  const resolved = s.predictions.filter((p) => p.settled);
+  return buildReport(load().predictions);
+}
+
+export function buildReport(predictions) {
+  const resolved = predictions.filter((p) => p.settled && !p.expired);
 
   const rows = [];
   for (const rec of resolved) {
@@ -290,7 +310,8 @@ export function getReport() {
 
   return {
     resumen: {
-      prediccionesGuardadas: s.predictions.length,
+      prediccionesGuardadas: predictions.length,
+      prediccionesDescartadas: predictions.filter((p) => p.expired).length,
       partidosResueltos: resolved.length,
       picksEvaluados: gradable,
       picksNoEvaluables: ungradable,

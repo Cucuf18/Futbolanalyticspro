@@ -244,3 +244,25 @@ de B aunque nunca se hayan enfrentado.
 
 Los tres se arreglan con un plan de pago, no con código. El motor ya está
 preparado para usarlos en cuanto haya datos.
+
+
+---
+
+## 💾 Persistencia del historial (importante en Render)
+
+El historial de predicciones y los pesos aprendidos viven en `server/services/persistence.js`.
+
+- **Sin `DATABASE_URL`**: se guardan en archivos JSON (`server/data/`). En Render gratis el disco es efímero y **se borra en cada redeploy o reinicio**.
+- **Con `DATABASE_URL`** (Postgres de Neon o Supabase): se guardan en una tabla `kv` y sobreviven a todo.
+
+`GET /api/health` indica qué modo está activo (`persistence`).
+
+## 🧪 Tests
+
+```bash
+npm test
+```
+
+Cubren la resolución de picks (`gradePick`), la regla anti-trampa del backtest
+(un partido solo cuenta si empezó **después** de generarse la predicción), la curva
+de calibración y las matemáticas del motor de mercados.

@@ -1,6 +1,7 @@
 import fs from 'fs';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { readBlob, writeBlob } from './persistence.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -27,11 +28,15 @@ const DEFAULT_WEIGHTS = {
 
 const MAX_PROCESSED_IDS = 800;
 
+// optimizedWeights.json va en el repositorio como semilla inicial. Los
+// ajustes que va aprendiendo el motor se guardan en la persistencia
+// (Postgres en Render) y tienen prioridad sobre la semilla.
 export function getWeights() {
+  const saved = readBlob('weights');
+  if (saved) return { ...DEFAULT_WEIGHTS, ...saved };
   try {
     if (fs.existsSync(WEIGHTS_PATH)) {
-      const data = fs.readFileSync(WEIGHTS_PATH, 'utf8');
-      return { ...DEFAULT_WEIGHTS, ...JSON.parse(data) };
+      return { ...DEFAULT_WEIGHTS, ...JSON.parse(fs.readFileSync(WEIGHTS_PATH, 'utf8')) };
     }
   } catch (err) {
     console.error('Error reading optimized weights, using defaults:', err);
@@ -40,13 +45,7 @@ export function getWeights() {
 }
 
 function saveWeights(weights) {
-  try {
-    const dir = path.dirname(WEIGHTS_PATH);
-    if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
-    fs.writeFileSync(WEIGHTS_PATH, JSON.stringify(weights, null, 2), 'utf8');
-  } catch (err) {
-    console.error('Error saving optimized weights:', err);
-  }
+  writeBlob('weights', weights);
 }
 
 const betId = (bet) => `${bet.matchId || bet.valueBetType}|${bet.settledAt || ''}`;
