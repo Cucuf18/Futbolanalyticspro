@@ -10,6 +10,7 @@ import { getPoolStats } from './services/ratingPool.js';
 import { settlePending, getReport, getPending } from './services/backtest.js';
 import { getTeamStats } from './services/externalDataAggregator.js';
 import { initPersistence, usingDatabase } from './services/persistence.js';
+import { runAutoRegister } from './services/autoRegister.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -177,6 +178,24 @@ async function autoSettle() {
     console.warn('[Backtest] Fallo la resolucion automatica:', err.message);
   }
 }
+
+// Registro automatico de los proximos partidos (ver autoRegister.js).
+const AUTO_REGISTER_INTERVAL_MS = 6 * 60 * 60 * 1000;
+
+async function autoRegister() {
+  try {
+    const r = await runAutoRegister();
+    if (r.registered > 0 || r.failed > 0) {
+      console.log(`[AutoRegistro] ${r.registered} registradas, ${r.failed} fallidas, ${r.found} partidos proximos.`);
+    }
+  } catch (err) {
+    console.warn('[AutoRegistro] Fallo la pasada:', err.message);
+  }
+}
+// Se espera unos minutos tras arrancar para no competir con las
+// primeras visitas por el cupo de la API.
+setTimeout(autoRegister, 3 * 60 * 1000).unref?.();
+setInterval(autoRegister, AUTO_REGISTER_INTERVAL_MS).unref?.();
 
 // Un primer pase al arrancar (con margen para no competir con el
 // arranque) y despues cada 6 horas.

@@ -486,10 +486,16 @@ async function enrichWithDomesticForm(team, leagueId) {
 /* ──────────────────────────────────────────────────────
    Public API: Match Prediction
    ────────────────────────────────────────────────────── */
-export async function getMatchPredictionDetails(homeTeamId, awayTeamId, leagueId = 'PL') {
+export async function getMatchPredictionDetails(homeTeamId, awayTeamId, leagueId = 'PL', opts = {}) {
   const standings = await getLeagueStandings(leagueId);
-  const rawHome = standings.teams.find((t) => t.id === Number(homeTeamId)) || standings.teams[0];
-  const rawAway = standings.teams.find((t) => t.id === Number(awayTeamId)) || standings.teams[1];
+  const foundHome = standings.teams.find((t) => t.id === Number(homeTeamId));
+  const foundAway = standings.teams.find((t) => t.id === Number(awayTeamId));
+  // Si el equipo no esta en la tabla se sigue usando el primero (para no
+  // romper la pagina), pero esa prediccion NO se guarda en el historial:
+  // estaria registrada a nombre de un equipo que nadie pidio.
+  const teamsResolved = Boolean(foundHome && foundAway);
+  const rawHome = foundHome || standings.teams[0];
+  const rawAway = foundAway || standings.teams[1];
 
   // Si el equipo no tiene partidos en esta competicion, se recupera su
   // rendimiento en su liga domestica antes de predecir nada.
@@ -542,7 +548,18 @@ export async function getMatchPredictionDetails(homeTeamId, awayTeamId, leagueId
   // acierta de verdad. Sin esto no hay forma de saber si el modelo
   // mejora o empeora con los cambios.
   try {
-    recordPrediction({ leagueId, homeTeam, awayTeam, prediction });
+    if (teamsResolved) {
+      recordPrediction({
+        leagueId,
+        homeTeam,
+        awayTeam,
+        prediction,
+        kickoff: opts.kickoff ?? null,
+        source: opts.source ?? 'manual',
+      });
+    } else {
+      console.warn(`[Backtest] Equipos ${homeTeamId}/${awayTeamId} no encontrados en ${leagueId}: no se registra.`);
+    }
   } catch (err) {
     console.warn('[Backtest] No se pudo registrar la prediccion:', err.message);
   }

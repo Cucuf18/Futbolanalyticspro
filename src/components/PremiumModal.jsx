@@ -65,7 +65,7 @@ export default function PremiumModal({ isOpen, onClose, onActivatePremium }) {
         <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '28px' }}>
           {[
             'Probabilidades de victoria por Poisson + xG sin limite.',
-            'Alertas de Value Bets y cuotas minimas recomendadas.',
+            'Cuotas minimas recomendadas y comprobador de valor con la cuota real de tu casa.',
             'Historial H2H extendido con matriz de marcadores probables.',
             'Experiencia sin publicidad (Ad-Free).',
           ].map((text, i) => (

@@ -66,13 +66,21 @@ const keyOf = (leagueId, homeId, awayId) => `${leagueId}:${homeId}:${awayId}`;
  * resolver para el mismo cruce, para que recargar la pagina veinte veces
  * no meta veinte copias y falsee la muestra.
  */
-export function recordPrediction({ leagueId, homeTeam, awayTeam, prediction }) {
+export function recordPrediction({ leagueId, homeTeam, awayTeam, prediction, kickoff = null, source = 'manual' }) {
   if (!prediction?.matchPicks) return null;
   const s = load();
   const key = keyOf(leagueId, homeTeam.id, awayTeam.id);
 
   const existing = s.predictions.find((p) => p.key === key && !p.settled);
-  if (existing) return existing.id;
+  if (existing) {
+    // Si el partido se registro a mano y despues llega con su hora de
+    // inicio conocida, se completa el dato (la fecha de creacion no cambia).
+    if (kickoff && !existing.kickoff) {
+      existing.kickoff = kickoff;
+      scheduleSave();
+    }
+    return existing.id;
+  }
 
   const picks = [];
   for (const tier of ['safe', 'medium', 'risky']) {
@@ -99,6 +107,11 @@ export function recordPrediction({ leagueId, homeTeam, awayTeam, prediction }) {
     homeTeamName: homeTeam.name,
     awayTeamName: awayTeam.name,
     createdAt: new Date().toISOString(),
+    // Hora de inicio del partido (solo en el registro automatico).
+    kickoff,
+    // 'auto' = lo registro el servidor sin intervencion; 'manual' = alguien
+    // abrio el partido en la web.
+    source,
     dataQuality: prediction.dataQuality ?? null,
     expectedGoals: prediction.expectedGoals ?? null,
     probabilities: prediction.probabilities ?? null,
@@ -167,14 +180,18 @@ export function gradePick(settle, homeGoals, awayGoals) {
  */
 export function findMatchForPrediction(rec, matches) {
   const predictedAt = new Date(rec.createdAt).getTime();
+  const kickoffAt = rec.kickoff ? new Date(rec.kickoff).getTime() : null;
   return (
     matches
-      .filter(
-        (m) =>
-          m.homeTeam?.id === rec.homeTeamId &&
-          m.awayTeam?.id === rec.awayTeamId &&
-          new Date(m.utcDate).getTime() > predictedAt
-      )
+      .filter((m) => {
+        if (m.homeTeam?.id !== rec.homeTeamId || m.awayTeam?.id !== rec.awayTeamId) return false;
+        const t = new Date(m.utcDate).getTime();
+        if (t <= predictedAt) return false;
+        // Con hora de inicio conocida, solo vale ESE partido (tolerancia
+        // de 3 h por si lo aplazan unas horas), no otro cruce posterior.
+        if (kickoffAt !== null && Math.abs(t - kickoffAt) > 3 * 3600 * 1000) return false;
+        return true;
+      })
       .sort((x, y) => new Date(x.utcDate) - new Date(y.utcDate))[0] || null
   );
 }
@@ -247,6 +264,28 @@ export async function settlePending() {
  * Informe de rendimiento. Devuelve el global, el desglose por mercado y
  * por liga, y la curva de calibracion.
  */
+/**
+ * Intervalo de confianza de Wilson al 95% para una proporcion. Con pocos
+ * picks es muy ancho: es la forma honesta de mostrar que un 70% sobre 20
+ * picks no demuestra nada.
+ */
+export function wilsonInterval(wins, n, z = 1.96) {
+  if (!n) return null;
+  const p = wins / n;
+  const denom = 1 + (z * z) / n;
+  const center = (p + (z * z) / (2 * n)) / denom;
+  const margin = (z * Math.sqrt((p * (1 - p)) / n + (z * z) / (4 * n * n))) / denom;
+  return [Number(((center - margin) * 100).toFixed(1)), Number(((center + margin) * 100).toFixed(1))];
+}
+
+/** Cuanta muestra hay para sacar conclusiones. */
+export function confidenceLevel(picksEvaluados) {
+  if (picksEvaluados < 100) return 'muy baja';
+  if (picksEvaluados < 300) return 'baja';
+  if (picksEvaluados < 1000) return 'media';
+  return 'alta';
+}
+
 export function getReport() {
   return buildReport(load().predictions);
 }
@@ -258,20 +297,38 @@ export function buildReport(predictions) {
   for (const rec of resolved) {
     for (const p of rec.picks) {
       if (p.hit === null || p.hit === undefined) continue;
-      rows.push({ ...p, leagueId: rec.leagueId, dataQuality: rec.dataQuality });
+      rows.push({ ...p, leagueId: rec.leagueId, dataQuality: rec.dataQuality, source: rec.source || 'manual' });
     }
   }
 
   const tally = (list) => {
     const won = list.filter((r) => r.hit).length;
+    const n = list.length;
+    const ci = wilsonInterval(won, n);
+    // Brier: error cuadratico medio de la probabilidad (0 = perfecto,
+    // 0.25 = equivale a tirar una moneda). Mide la calidad de las
+    // probabilidades sin depender de ninguna cuota.
+    const brier = n
+      ? Number((list.reduce((a, r) => a + (r.probability / 100 - (r.hit ? 1 : 0)) ** 2, 0) / n).toFixed(4))
+      : null;
+    // Yield SIMULADO: 1 unidad por pick a la cuota ESTIMADA (no real).
+    const priced = list.filter((r) => typeof r.marketOdds === 'number' && r.marketOdds > 1);
+    const yieldSim = priced.length
+      ? Number(
+          ((priced.reduce((a, r) => a + (r.hit ? r.marketOdds - 1 : -1), 0) / priced.length) * 100).toFixed(1)
+        )
+      : null;
     return {
-      total: list.length,
+      total: n,
       won,
-      lost: list.length - won,
-      hitRate: list.length ? Number(((won / list.length) * 100).toFixed(1)) : null,
-      avgPredicted: list.length
-        ? Number((list.reduce((a, r) => a + r.probability, 0) / list.length).toFixed(1))
+      lost: n - won,
+      hitRate: n ? Number(((won / n) * 100).toFixed(1)) : null,
+      ic95: ci,
+      avgPredicted: n
+        ? Number((list.reduce((a, r) => a + r.probability, 0) / n).toFixed(1))
         : null,
+      brier,
+      yieldSimulado: yieldSim,
     };
   };
 
@@ -321,11 +378,17 @@ export function buildReport(predictions) {
     porMercado: groupBy(rows, (r) => r.marketType),
     porNivelDeRiesgo: groupBy(rows, (r) => r.tier),
     porLiga: groupBy(rows, (r) => r.leagueId),
+    // Los registros automaticos cubren TODOS los partidos de las ligas, sin
+    // sesgo de seleccion; los manuales son solo los que alguien abrio.
+    porOrigen: groupBy(rows, (r) => (r.source === 'auto' ? 'automatico' : 'manual')),
     // Con datos pobres el modelo deberia acertar menos: si no es asi, la
     // metrica de calidad de datos no esta midiendo nada.
     porCalidadDeDatos: groupBy(rows, (r) =>
       r.dataQuality === null ? 'desconocida' : r.dataQuality >= 0.6 ? 'alta' : r.dataQuality >= 0.4 ? 'media' : 'baja'
     ),
+    confianza: confidenceLevel(gradable),
+    notaYield:
+      'El yield simulado usa cuotas ESTIMADAS por el modelo (probabilidad cruda menos 6% de margen), no cuotas reales de ninguna casa. Sirve para comparar versiones del modelo, no para prometer ganancias: el rendimiento real depende de la cuota que ofrezca tu casa.',
     nota:
       'Corners, tarjetas, faltas, tiros y offsides no se pueden evaluar: ninguna de las dos APIs gratuitas devuelve esas estadisticas por partido.',
   };

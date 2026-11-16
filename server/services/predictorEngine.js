@@ -230,8 +230,6 @@ function finalizePick(pick) {
     ? {
         marketOdds: pick.marketOdds,
         breakEvenOdds: pick.breakEvenOdds ?? fairOddsFrom(pick.probability),
-        hasValue: pick.hasValue,
-        edge: pick.edge,
       }
     : priceSelection(pick.rawProbability ?? pick.probability, pick.probability);
 
@@ -697,7 +695,7 @@ function organizePicks(candidates, weights) {
 
   const rest = all.filter((p) => !safeSet.has(p));
   const medium = rest.filter((p) => p.probability >= mediumMin).sort((a, b) => b.probability - a.probability);
-  const risky = rest.filter((p) => p.probability < mediumMin).sort((a, b) => b.edge - a.edge || b.probability - a.probability);
+  const risky = rest.filter((p) => p.probability < mediumMin).sort((a, b) => b.probability - a.probability);
 
   return {
     safe: safe.slice(0, 3),

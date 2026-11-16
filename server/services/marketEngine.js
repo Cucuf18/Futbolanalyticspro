@@ -229,6 +229,12 @@ export function marketOddsFrom(probPct) {
  *
  * Mostrar 100/prob como si fuera la cuota real era lo que hacia que las
  * cuotas de la pagina no cuadraran con ninguna casa de apuestas.
+ *
+ * IMPORTANTE: aqui NO se calcula "valor" ni "edge". La cuota estimada sale
+ * de la propia probabilidad del modelo, asi que compararla con la cuota
+ * minima del mismo modelo es circular: solo mediria cuanto encoge la
+ * calibracion, no una ventaja real. El valor solo existe frente a la
+ * cuota REAL de la casa, que escribe el usuario (ver MatchPicks.jsx).
  */
 export function priceSelection(rawPct, calibratedPct) {
   const marketOdds = marketOddsFrom(rawPct);       // lo que paga la casa
@@ -237,8 +243,6 @@ export function priceSelection(rawPct, calibratedPct) {
     marketOdds,
     breakEvenOdds,
     fairOdds: breakEvenOdds,
-    hasValue: marketOdds > breakEvenOdds,
-    edge: Number(((marketOdds / breakEvenOdds - 1) * 100).toFixed(1)),
   };
 }
 
@@ -724,8 +728,6 @@ export function buildCountPick({
     fairOdds: found.fairOdds,
     marketOdds: found.marketOdds,
     breakEvenOdds: found.breakEvenOdds,
-    hasValue: found.hasValue,
-    edge: found.edge,
     expectedMean: found.mean,
     line: found.line,
     side: found.side,

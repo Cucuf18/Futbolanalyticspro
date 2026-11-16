@@ -8,7 +8,7 @@ import fs from 'fs';
 process.env.DATA_DIR = fs.mkdtempSync(path.join(os.tmpdir(), 'fap-'));
 delete process.env.DATABASE_URL;
 
-const { gradePick, findMatchForPrediction, buildReport, settlePending, _resetStoreForTests } =
+const { gradePick, findMatchForPrediction, buildReport, settlePending, _resetStoreForTests, wilsonInterval, confidenceLevel } =
   await import('../server/services/backtest.js');
 const { writeBlob, readBlob, _resetForTests } = await import('../server/services/persistence.js');
 
@@ -122,4 +122,54 @@ test('persistencia en archivos: lo escrito se puede volver a leer', () => {
   _resetForTests();
   assert.deepEqual(readBlob('demo'), { a: 1 });
   assert.equal(readBlob('no-existe'), null);
+});
+
+test('con hora de inicio conocida solo vale ESE partido, no otro cruce posterior', () => {
+  const r = { homeTeamId: 1, awayTeamId: 2, createdAt: '2026-11-10T12:00:00Z', kickoff: '2026-11-14T15:00:00Z' };
+  const rematch = match(30, 1, 2, '2026-12-20T15:00:00Z');
+  assert.equal(findMatchForPrediction(r, [rematch]), null);
+  const real = match(31, 1, 2, '2026-11-14T16:00:00Z'); // retrasado 1 h
+  assert.equal(findMatchForPrediction(r, [rematch, real]).id, 31);
+});
+
+test('wilsonInterval: contiene la proporcion y se estrecha con mas muestra', () => {
+  const small = wilsonInterval(14, 20); // 70%
+  const large = wilsonInterval(700, 1000); // 70%
+  assert.ok(small[0] < 70 && small[1] > 70);
+  assert.ok(small[1] - small[0] > large[1] - large[0]);
+  assert.equal(wilsonInterval(0, 0), null);
+});
+
+test('confidenceLevel segun el numero de picks evaluados', () => {
+  assert.equal(confidenceLevel(50), 'muy baja');
+  assert.equal(confidenceLevel(150), 'baja');
+  assert.equal(confidenceLevel(500), 'media');
+  assert.equal(confidenceLevel(5000), 'alta');
+});
+
+test('buildReport: Brier perfecto = 0 y una moneda (50%) = 0.25', () => {
+  const perfect = buildReport([settled([{ probability: 100, hit: true, marketType: 'GOLES', tier: 'safe' }])]);
+  assert.equal(perfect.resumen.brier, 0);
+  const coin = buildReport([settled([pick(50, true), pick(50, false)])]);
+  assert.equal(coin.resumen.brier, 0.25);
+});
+
+test('buildReport: yield simulado con cuotas estimadas (gana 1 a @2.0 y pierde 1 = 0%)', () => {
+  const r = buildReport([settled([
+    { ...pick(50, true), marketOdds: 2 },
+    { ...pick(50, false), marketOdds: 2 },
+  ])]);
+  assert.equal(r.resumen.yieldSimulado, 0);
+  const win = buildReport([settled([{ ...pick(60, true), marketOdds: 1.5 }])]);
+  assert.equal(win.resumen.yieldSimulado, 50);
+  assert.match(r.notaYield, /ESTIMADAS/);
+});
+
+test('buildReport separa registros automaticos de manuales', () => {
+  const r = buildReport([
+    settled([pick(70, true)], { source: 'auto' }),
+    settled([pick(70, false)]),
+  ]);
+  const keys = r.porOrigen.map((o) => o.key).sort();
+  assert.deepEqual(keys, ['automatico', 'manual']);
 });

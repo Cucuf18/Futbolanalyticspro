@@ -71,7 +71,7 @@ Una vez ejecutado:
 1. **Modelado Estadístico Predictivo**:
    - Probabilidades de Victoria Local, Empate y Victoria Visitante.
    - Marcador más probable y matriz de goles esperados (xG).
-   - Señales de **Value Bets** y cuota mínima recomendada.
+   - Cuota mínima recomendada y comprobador de valor: el "valor" solo se declara frente a la **cuota real** de tu casa, nunca frente a una cuota inventada por el propio modelo.
 2. **Sistema de Monetización Doble**:
    - **Banners Modulares (`AdBanner.jsx`)**: Espacios de publicidad no intrusivos en cabecera y pie de contenido.
    - **Paywall Condicional (`PredictionPanel.jsx` + `PremiumModal.jsx`)**: Vista de predicciones bloqueada con efecto glass blur. Incluye un switch interactivo en la barra superior ("Plan Gratuito" / "⭐ Premium") para probar la experiencia bloqueada y desbloqueada.
@@ -266,3 +266,10 @@ npm test
 Cubren la resolución de picks (`gradePick`), la regla anti-trampa del backtest
 (un partido solo cuenta si empezó **después** de generarse la predicción), la curva
 de calibración y las matemáticas del motor de mercados.
+
+
+## 🤖 Registro automático y métricas de fiabilidad
+
+- `server/services/autoRegister.js` registra solo (cada 6 h) la predicción de los partidos de las próximas 72 h de todas las ligas, **antes** de que se jueguen y con su hora de inicio. Es la muestra sin sesgo con la que se juzga al modelo.
+- El reporte incluye intervalo de confianza al 95% (Wilson), **Brier** (calidad de las probabilidades, sin depender de cuotas), yield simulado (con cuotas *estimadas*, no reales) y un nivel de **fiabilidad de la medición** según el número de picks resueltos.
+- Una predicción de un equipo que no aparece en la tabla ya no se guarda en el historial.

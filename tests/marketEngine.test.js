@@ -70,7 +70,12 @@ test('expectedValue: cuota justa da EV 0, por encima positivo', () => {
 test('priceSelection devuelve cuota minima = 1/p calibrada', () => {
   const r = priceSelection(70, 62);
   close(r.breakEvenOdds, fairOddsFrom(62));
-  assert.equal(r.hasValue, r.marketOdds > r.breakEvenOdds);
+});
+
+test('priceSelection NO declara valor ni edge (seria circular: sale del mismo modelo)', () => {
+  const r = priceSelection(70, 62);
+  assert.equal('hasValue' in r, false);
+  assert.equal('edge' in r, false);
 });
 
 test('calidad de datos: sube con muestra, H2H y datos externos, y queda en [0.05,1]', () => {

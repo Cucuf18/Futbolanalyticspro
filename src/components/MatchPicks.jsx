@@ -113,7 +113,7 @@ function PickCard({ pick, matchInfo, riskLevel }) {
       }}>
         <div style={{ background: 'rgba(0,0,0,0.25)', borderRadius: '8px', padding: '8px 10px' }}>
           <div style={{ fontSize: '9px', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
-            Cuota estimada
+            Cuota estimada (referencia)
           </div>
           <div style={{ fontSize: '16px', fontWeight: 800, color: '#fff' }}>@{pick.marketOdds}</div>
         </div>
@@ -132,7 +132,7 @@ function PickCard({ pick, matchInfo, riskLevel }) {
           inputMode="decimal"
           value={realOdds}
           onChange={(e) => setRealOdds(e.target.value)}
-          placeholder="Cuota real de tu casa"
+          placeholder="Cuota real de tu casa (Betano)"
           style={{
             flex: 1, minWidth: 0, background: 'rgba(255,255,255,0.04)',
             border: '1px solid var(--glass-border)', borderRadius: '8px',
@@ -195,7 +195,7 @@ export default function MatchPicks({ matchPicks, matchInfo, dataQuality, leagueT
   const groups = currentPicks.map((p) => p.correlationGroup || p.marketType);
   const hasCorrelation = groups.some((g, i) => groups.indexOf(g) !== i);
 
-  const lowData = typeof dataQuality === 'number' && dataQuality < 0.45;
+  const lowData = typeof dataQuality === 'number' && dataQuality < 0.40;
 
   return (
     <div style={{ marginBottom: '28px' }}>
@@ -220,6 +220,28 @@ export default function MatchPicks({ matchPicks, matchInfo, dataQuality, leagueT
           </span>
         )}
       </div>
+
+      {typeof dataQuality === 'number' && dataQuality < 0.40 && (
+        <div style={{
+          background: 'rgba(255, 82, 82, 0.08)', border: '1px solid rgba(255, 82, 82, 0.35)',
+          borderRadius: '10px', padding: '10px 12px', marginBottom: '14px',
+          fontSize: '12px', color: 'var(--text-secondary)', lineHeight: 1.5,
+        }}>
+          <strong style={{ color: 'var(--accent-red)' }}>Prediccion basada en datos limitados.</strong>{' '}
+          Hay pocos partidos jugados, poco historial directo o datos externos incompletos. Las
+          probabilidades de este partido son menos fiables que de costumbre: procede con cautela
+          o evita apostar aqui.
+        </div>
+      )}
+      {typeof dataQuality === 'number' && dataQuality >= 0.40 && dataQuality < 0.60 && (
+        <div style={{
+          background: 'rgba(255, 170, 0, 0.06)', border: '1px solid rgba(255, 170, 0, 0.25)',
+          borderRadius: '10px', padding: '8px 12px', marginBottom: '14px',
+          fontSize: '11.5px', color: 'var(--text-secondary)', lineHeight: 1.45,
+        }}>
+          Calidad de datos media: la muestra de este partido es moderada.
+        </div>
+      )}
 
       {leagueTendencies && leagueTendencies.length > 0 && (
         <div style={{

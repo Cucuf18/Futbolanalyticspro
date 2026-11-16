@@ -143,12 +143,18 @@ export default function BacktestReport() {
         }}>
           Todavia no hay partidos resueltos. Hay <strong>{r.prediccionesGuardadas}</strong> predicciones
           guardadas esperando a que se jueguen los partidos. El servidor las comprueba solo cada 6 horas,
-          asi que esta tabla se ira llenando sin que tengas que hacer nada.
+          asi que esta tabla se ira llenando sin que tengas que hacer nada. Ademas, el servidor registra por su
+          cuenta los partidos de las proximas 72 horas de todas las ligas.
         </div>
       ) : (
         <>
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(150px, 1fr))', gap: '12px', marginTop: '18px' }}>
-            <Stat label="Acierto real" value={`${r.hitRate ?? '—'}%`} color="var(--accent-green)" hint={`${r.won} de ${r.total} picks`} />
+            <Stat
+              label="Acierto real"
+              value={`${r.hitRate ?? '—'}%`}
+              color="var(--accent-green)"
+              hint={`${r.won} de ${r.total} picks${r.ic95 ? ` · IC 95%: ${r.ic95[0]}–${r.ic95[1]}%` : ''}`}
+            />
             <Stat label="El modelo decia" value={`${r.avgPredicted ?? '—'}%`} color="var(--accent-cyan)" />
             <Stat
               label="Desvio"
@@ -157,6 +163,32 @@ export default function BacktestReport() {
               hint={calibrado}
             />
             <Stat label="Partidos resueltos" value={r.partidosResueltos} hint={`${r.picksNoEvaluables} picks no evaluables`} />
+            <Stat
+              label="Brier"
+              value={r.brier ?? '—'}
+              hint="0 = perfecto · 0.25 = moneda al aire"
+              color={r.brier === null ? undefined : r.brier < 0.2 ? 'var(--accent-green)' : r.brier < 0.25 ? 'var(--accent-gold)' : 'var(--accent-red)'}
+            />
+            <Stat
+              label="Yield simulado"
+              value={r.yieldSimulado === null ? '—' : `${r.yieldSimulado > 0 ? '+' : ''}${r.yieldSimulado}%`}
+              color={r.yieldSimulado === null ? undefined : r.yieldSimulado >= 0 ? 'var(--accent-green)' : 'var(--accent-red)'}
+              hint="con cuotas estimadas, no reales"
+            />
+          </div>
+
+          <div style={{
+            marginTop: '14px', padding: '12px 14px', borderRadius: '10px', fontSize: '12px', lineHeight: 1.55,
+            background: report.confianza === 'alta' || report.confianza === 'media' ? 'rgba(0,230,118,0.06)' : 'rgba(255,170,0,0.08)',
+            border: `1px solid ${report.confianza === 'alta' || report.confianza === 'media' ? 'rgba(0,230,118,0.3)' : 'rgba(255,170,0,0.3)'}`,
+            color: 'var(--text-secondary)',
+          }}>
+            <strong style={{ color: 'var(--text-primary)' }}>Fiabilidad de esta medicion: {report.confianza}.</strong>{' '}
+            {report.confianza === 'muy baja' && 'Con menos de 100 picks resueltos estos numeros no demuestran nada: pueden ser pura suerte.'}
+            {report.confianza === 'baja' && 'Todavia son pocos picks para distinguir un modelo bueno de uno con suerte. Fijate en el intervalo de confianza.'}
+            {report.confianza === 'media' && 'Muestra razonable, pero los tramos y mercados individuales aun pueden moverse bastante.'}
+            {report.confianza === 'alta' && 'Muestra grande: los porcentajes ya son una guia solida.'}
+            {' '}{report.notaYield}
           </div>
 
           <Table
@@ -168,6 +200,12 @@ export default function BacktestReport() {
           <Table title="Por mercado" rows={report.porMercado} keyLabel="Mercado" />
           <Table title="Por nivel de riesgo" rows={report.porNivelDeRiesgo} keyLabel="Nivel" />
           <Table title="Por liga" rows={report.porLiga} keyLabel="Liga" />
+          <Table
+            title="Por origen del registro"
+            note="Automatico = el servidor registro el partido antes de jugarse, para todos por igual (muestra sin sesgo). Manual = alguien abrio ese partido en la web."
+            rows={report.porOrigen}
+            keyLabel="Origen"
+          />
           <Table
             title="Por calidad de datos"
             note="Si el motor no acierta menos con datos pobres, esa metrica no esta midiendo nada."
