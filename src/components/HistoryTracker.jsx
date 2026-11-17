@@ -3,6 +3,7 @@ import { useBetSlip } from '../context/BetSlipContext';
 import { useNavigate } from 'react-router-dom';
 import Navbar from './Navbar';
 import BacktestReport from './BacktestReport';
+import MisApuestas from './MisApuestas';
 
 export default function HistoryTracker() {
   const { history, clearHistory } = useBetSlip();
@@ -33,6 +34,9 @@ export default function HistoryTracker() {
             ← Volver al Dashboard
           </button>
         </div>
+
+        {/* Tu banca y tu yield real, con las cuotas de tu casa */}
+        <MisApuestas />
 
         {/* Rendimiento real medido por el propio motor */}
         <BacktestReport />

@@ -11,12 +11,16 @@ import { settlePending, getReport, getPending } from './services/backtest.js';
 import { getTeamStats } from './services/externalDataAggregator.js';
 import { initPersistence, usingDatabase } from './services/persistence.js';
 import { runAutoRegister } from './services/autoRegister.js';
+import { betsRouter } from './betsRoutes.js';
+import { settleBets } from './services/bets.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 const app = express();
 
+// Render va detras de un proxy: necesario para ver la IP real del cliente.
+app.set('trust proxy', 1);
 app.use(cors());
 app.use(express.json({ limit: '2mb' }));
 
@@ -158,6 +162,9 @@ app.get('/api/weights', (req, res) => {
   }
 });
 
+// Mis apuestas reales (protegidas con BETS_TOKEN)
+app.use('/api/bets', betsRouter);
+
 // ─────────────────────────────────────────────────────────
 // Serve Frontend in Production
 // ─────────────────────────────────────────────────────────
@@ -179,6 +186,8 @@ const SETTLE_INTERVAL_MS = 6 * 60 * 60 * 1000; // cada 6 horas
 
 async function autoSettle() {
   try {
+    const bets = await settleBets();
+    if (bets.changed > 0) console.log(`[Apuestas] ${bets.changed} selecciones resueltas.`);
     const result = await settlePending();
     if (result.settled > 0) {
       console.log(`[Backtest] Resueltas ${result.settled} predicciones contra resultados reales.`);

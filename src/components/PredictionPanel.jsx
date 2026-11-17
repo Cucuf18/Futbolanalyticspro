@@ -45,6 +45,10 @@ export default function PredictionPanel({ predictionData, isPremium, onOpenPremi
       odds: pick.marketOdds || pick.fairOdds,
       breakEvenOdds: pick.breakEvenOdds || pick.fairOdds,
       marketType: pick.marketType,
+      settle: pick.settle || null,
+      homeTeamId: matchInfo.homeTeam.id,
+      awayTeamId: matchInfo.awayTeam.id,
+      leagueId: matchInfo.league?.id,
     });
   };
 

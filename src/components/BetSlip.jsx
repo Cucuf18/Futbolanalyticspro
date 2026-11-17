@@ -1,12 +1,19 @@
 import React, { useState, useEffect } from 'react';
 import { useBetSlip } from '../context/BetSlipContext';
 import { useNavigate } from 'react-router-dom';
+import { betsApi, getToken } from '../api/betsApi';
 
 const MINIMIZED_KEY = 'bet_slip_minimized';
 
 export default function BetSlip() {
   const { slip, removeFromSlip, clearSlip, settleBet } = useBetSlip();
   const navigate = useNavigate();
+
+  // Registro de la apuesta REAL (monto y cuota de tu casa).
+  const [stake, setStake] = useState('');
+  const [totalOdds, setTotalOdds] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [msg, setMsg] = useState(null); // { ok: bool, text }
 
   // Se recuerda si lo dejaste minimizado, para que no vuelva a taparte
   // el contenido cada vez que cambias de partido o recargas.
@@ -19,6 +26,12 @@ export default function BetSlip() {
   });
 
   useEffect(() => {
+    if (!msg?.ok || slip.length > 0) return undefined;
+    const t = setTimeout(() => setMsg(null), 7000);
+    return () => clearTimeout(t);
+  }, [msg, slip.length]);
+
+  useEffect(() => {
     try {
       localStorage.setItem(MINIMIZED_KEY, String(isMinimized));
     } catch {
@@ -26,7 +39,62 @@ export default function BetSlip() {
     }
   }, [isMinimized]);
 
-  if (slip.length === 0) return null;
+  if (slip.length === 0) {
+    // Tras registrar la apuesta el boleto queda vacio: solo se muestra la confirmacion.
+    if (!msg) return null;
+    return (
+      <div style={{
+        position: 'fixed', bottom: '20px', right: '20px', zIndex: 1000, maxWidth: 'min(320px, calc(100vw - 40px))',
+        background: 'rgba(15, 22, 41, 0.95)', border: `1px solid ${msg.ok ? 'var(--accent-green)' : 'var(--accent-red)'}`,
+        borderRadius: '12px', padding: '12px 14px', fontSize: '12px', lineHeight: 1.45,
+        color: msg.ok ? 'var(--accent-green)' : 'var(--accent-red)', display: 'flex', gap: '10px', alignItems: 'flex-start',
+      }}>
+        <span style={{ flex: 1 }}>{msg.text}</span>
+        <button onClick={() => setMsg(null)} aria-label="Cerrar" style={{ background: 'transparent', border: 'none', color: 'var(--text-muted)', cursor: 'pointer' }}>✕</button>
+      </div>
+    );
+  }
+
+  const num = (v) => parseFloat(String(v).replace(',', '.'));
+  const registerBet = async () => {
+    const s = num(stake);
+    const o = num(totalOdds);
+    if (!getToken()) {
+      setMsg({ ok: false, text: 'Primero guarda tu clave en Rendimiento → Mis apuestas reales.' });
+      return;
+    }
+    if (!(s > 0) || !(o > 1)) {
+      setMsg({ ok: false, text: 'Escribe el monto y la cuota total que te da tu casa.' });
+      return;
+    }
+    setBusy(true);
+    setMsg(null);
+    try {
+      await betsApi.add({
+        stake: s,
+        odds: o,
+        legs: slip.map((p) => ({
+          matchLabel: `${p.homeTeamFull || p.homeTeam} vs ${p.awayTeamFull || p.awayTeam}`,
+          label: p.valueBetType,
+          marketType: p.marketType,
+          probability: p.probability,
+          odds: p.odds,
+          leagueId: p.leagueId,
+          homeTeamId: p.homeTeamId,
+          awayTeamId: p.awayTeamId,
+          settle: p.settle,
+        })),
+      });
+      clearSlip();
+      setStake('');
+      setTotalOdds('');
+      setMsg({ ok: true, text: 'Apuesta registrada. Se resolverá sola cuando termine el partido.' });
+    } catch (e) {
+      setMsg({ ok: false, text: e.message });
+    } finally {
+      setBusy(false);
+    }
+  };
 
   // ── Vista minimizada: solo una pastilla con el contador ──
   if (isMinimized) {
@@ -171,6 +239,38 @@ export default function BetSlip() {
             </div>
           </div>
         ))}
+      </div>
+
+      <div style={{ marginTop: '12px', paddingTop: '12px', borderTop: '1px solid var(--glass-border)' }}>
+        <div style={{ fontSize: '11px', fontWeight: 700, color: 'var(--text-secondary)', marginBottom: '6px' }}>
+          ¿La apostaste de verdad? Regístrala:
+        </div>
+        <div style={{ display: 'flex', gap: '6px' }}>
+          <input
+            inputMode="decimal" value={stake} onChange={(e) => setStake(e.target.value)}
+            placeholder="Monto S/"
+            style={{ flex: 1, minWidth: 0, background: 'rgba(255,255,255,0.06)', border: '1px solid var(--glass-border)', borderRadius: '8px', color: 'var(--text-primary)', padding: '7px 8px', fontSize: '12px' }}
+          />
+          <input
+            inputMode="decimal" value={totalOdds} onChange={(e) => setTotalOdds(e.target.value)}
+            placeholder="Cuota total"
+            style={{ flex: 1, minWidth: 0, background: 'rgba(255,255,255,0.06)', border: '1px solid var(--glass-border)', borderRadius: '8px', color: 'var(--text-primary)', padding: '7px 8px', fontSize: '12px' }}
+          />
+        </div>
+        <div style={{ fontSize: '10px', color: 'var(--text-muted)', margin: '4px 0 6px', lineHeight: 1.4 }}>
+          Usa la cuota total exacta que muestra tu casa en su boleto{slip.length > 1 ? ' (las combinadas no siempre multiplican igual)' : ''}.
+        </div>
+        <button
+          onClick={registerBet} disabled={busy}
+          style={{ width: '100%', background: 'rgba(0, 230, 118, 0.12)', border: '1px solid var(--accent-green)', color: 'var(--accent-green)', padding: '8px', borderRadius: '8px', cursor: busy ? 'wait' : 'pointer', fontWeight: 800, fontSize: '12px' }}
+        >
+          {busy ? 'Guardando...' : slip.length > 1 ? `Registrar combinada (${slip.length})` : 'Registrar apuesta'}
+        </button>
+        {msg && (
+          <div style={{ fontSize: '11px', marginTop: '6px', color: msg.ok ? 'var(--accent-green)' : 'var(--accent-red)', lineHeight: 1.4 }}>
+            {msg.text}
+          </div>
+        )}
       </div>
 
       <button

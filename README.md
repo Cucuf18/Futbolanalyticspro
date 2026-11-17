@@ -273,3 +273,13 @@ de calibración y las matemáticas del motor de mercados.
 - `server/services/autoRegister.js` registra solo (cada 6 h) la predicción de los partidos de las próximas 72 h de todas las ligas, **antes** de que se jueguen y con su hora de inicio. Es la muestra sin sesgo con la que se juzga al modelo.
 - El reporte incluye intervalo de confianza al 95% (Wilson), **Brier** (calidad de las probabilidades, sin depender de cuotas), yield simulado (con cuotas *estimadas*, no reales) y un nivel de **fiabilidad de la medición** según el número de picks resueltos.
 - Una predicción de un equipo que no aparece en la tabla ya no se guarda en el historial.
+
+## 💰 Mis apuestas reales (banca y yield)
+
+Libro de apuestas guardado en el servidor (Postgres). Mide si ganas **dinero** con la cuota real de tu casa, que es distinto de que el modelo acierte.
+
+- Desde el boleto escribes el **monto** y la **cuota total** de tu casa y pulsas *Registrar*. Es simple (1 selección) o combinada.
+- Las selecciones verificables (1X2, doble oportunidad, handicap, goles, BTTS) se resuelven **solas** contra el resultado real. Corners y tarjetas se marcan a mano.
+- Pestaña *Rendimiento → Mis apuestas reales*: banca, ganancia, **yield**, % de aciertos con intervalo de confianza, peor caída, racha y desglose por tipo y mercado, con aviso de cuánta muestra hay.
+- **Protegido con clave**: define la variable `BETS_TOKEN` en Render (una contraseña larga que solo tú conoces). Sin ella, las rutas `/api/bets` quedan desactivadas. Hay límite de intentos fallidos.
+- No modifica el modelo ni sus pesos: es solo contabilidad.

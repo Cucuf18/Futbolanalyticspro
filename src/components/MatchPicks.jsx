@@ -47,6 +47,11 @@ function PickCard({ pick, matchInfo, riskLevel }) {
       breakEvenOdds: breakEven,
       marketType,
       riskLevel,
+      // Datos para resolver la apuesta sola contra el resultado real.
+      settle: pick.settle || null,
+      homeTeamId: matchInfo.homeTeam.id,
+      awayTeamId: matchInfo.awayTeam.id,
+      leagueId: matchInfo.league?.id,
     });
   };
 
