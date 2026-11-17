@@ -22,6 +22,21 @@ const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, '../data');
  * van en cola, una por clave, para que no se pisen entre si.
  */
 
+/**
+ * pg avisa de que 'sslmode=require' cambiara de significado en su proxima
+ * version mayor. El SSL ya se activa abajo con la opcion `ssl`, asi que se
+ * quita ese parametro de la URL: misma seguridad, sin el aviso.
+ */
+export function normalizeDatabaseUrl(url) {
+  try {
+    const u = new URL(url);
+    u.searchParams.delete('sslmode');
+    return u.toString();
+  } catch {
+    return url;
+  }
+}
+
 const cache = new Map();
 let pool = null;
 const queues = new Map();
@@ -38,7 +53,7 @@ export async function initPersistence() {
   }
   const { default: pg } = await import('pg');
   pool = new pg.Pool({
-    connectionString: url,
+    connectionString: normalizeDatabaseUrl(url),
     // Neon y Supabase exigen SSL.
     ssl: /localhost|127\.0\.0\.1/.test(url) ? false : { rejectUnauthorized: false },
     max: 3,

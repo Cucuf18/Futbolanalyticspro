@@ -1,5 +1,6 @@
 import express from 'express';
 import crypto from 'crypto';
+import { probeApiFootball } from './services/apiFootballProbe.js';
 import { listBets, addBet, resolveBet, deleteBet, setInitialBankroll, settleBets } from './services/bets.js';
 
 /**
@@ -75,4 +76,20 @@ betsRouter.delete('/:id', (req, res) => {
   const r = deleteBet(req.params.id);
   if (r.error) return fail(res, r);
   res.json({ success: true, ...listBets() });
+});
+
+/**
+ * Sondeo del plan gratuito de API-Football (protegido con la misma clave).
+ * Sirve para saber que datos extra (lesiones, arbitros, cuotas) se pueden
+ * usar de verdad antes de construir nada sobre ellos.
+ */
+export const diagRouter = express.Router();
+diagRouter.use(requireToken);
+diagRouter.get('/api-football', async (req, res) => {
+  try {
+    const season = Number.parseInt(req.query.season, 10) || new Date().getFullYear();
+    res.json({ success: true, ...(await probeApiFootball(process.env.APIFOOTBALL_KEY, { season })) });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
 });

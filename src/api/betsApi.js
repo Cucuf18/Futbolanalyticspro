@@ -24,6 +24,13 @@ async function call(path, options = {}) {
   return data;
 }
 
+export async function probeApiFootball() {
+  const res = await fetch('/api/diag/api-football', { headers: { 'x-bets-token': getToken() } });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok || data.success === false) throw new Error(data.error || `Error ${res.status}`);
+  return data;
+}
+
 export const betsApi = {
   list: () => call(''),
   add: (bet) => call('', { method: 'POST', body: JSON.stringify(bet) }),

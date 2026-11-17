@@ -11,7 +11,7 @@ import { settlePending, getReport, getPending } from './services/backtest.js';
 import { getTeamStats } from './services/externalDataAggregator.js';
 import { initPersistence, usingDatabase } from './services/persistence.js';
 import { runAutoRegister } from './services/autoRegister.js';
-import { betsRouter } from './betsRoutes.js';
+import { betsRouter, diagRouter } from './betsRoutes.js';
 import { settleBets } from './services/bets.js';
 
 const __filename = fileURLToPath(import.meta.url);
@@ -164,6 +164,7 @@ app.get('/api/weights', (req, res) => {
 
 // Mis apuestas reales (protegidas con BETS_TOKEN)
 app.use('/api/bets', betsRouter);
+app.use('/api/diag', diagRouter);
 
 // ─────────────────────────────────────────────────────────
 // Serve Frontend in Production

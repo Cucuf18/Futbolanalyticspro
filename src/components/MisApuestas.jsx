@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { betsApi, getToken, setToken } from '../api/betsApi';
+import { betsApi, getToken, setToken, probeApiFootball } from '../api/betsApi';
 
 const sol = (n) => (n === null || n === undefined ? '—' : `S/ ${Number(n).toLocaleString('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`);
 const sign = (n) => (n > 0 ? '+' : '');
@@ -34,6 +34,8 @@ export default function MisApuestas() {
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);
   const [bankroll, setBankroll] = useState('');
+  const [probe, setProbe] = useState(null);
+  const [probing, setProbing] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -170,6 +172,29 @@ export default function MisApuestas() {
           )}
         </>
       )}
+
+      <div style={{ marginTop: '18px', paddingTop: '14px', borderTop: '1px solid var(--glass-border)' }}>
+        <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '8px', lineHeight: 1.5 }}>
+          <strong>Datos extra (lesiones, árbitros, cuotas reales):</strong> prueba qué entrega tu plan gratuito de API-Football.
+          Gasta unas 6 consultas de las 100 diarias y no guarda nada.
+        </div>
+        <button
+          disabled={probing}
+          onClick={async () => {
+            setProbing(true);
+            setProbe(null);
+            try { setProbe(await probeApiFootball()); } catch (e) { setProbe({ error: e.message }); } finally { setProbing(false); }
+          }}
+          style={btn('var(--accent-cyan)')}
+        >
+          {probing ? 'Probando...' : 'Probar API-Football'}
+        </button>
+        {probe && (
+          <pre style={{ marginTop: '10px', padding: '10px', background: 'rgba(0,0,0,0.35)', borderRadius: '8px', fontSize: '11px', maxHeight: '320px', overflow: 'auto', whiteSpace: 'pre-wrap', color: 'var(--text-secondary)' }}>
+            {JSON.stringify(probe, null, 2)}
+          </pre>
+        )}
+      </div>
 
       {data && data.bets.length === 0 && (
         <div style={{ textAlign: 'center', padding: '24px', color: 'var(--text-muted)', fontSize: '13px' }}>
