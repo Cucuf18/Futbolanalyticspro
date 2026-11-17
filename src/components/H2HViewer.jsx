@@ -12,6 +12,18 @@ export default function H2HViewer({ h2hData }) {
         Historial Directo (H2H)
       </h2>
 
+      {(h2hData.synthetic || h2hData.source === 'unavailable') && (
+        <div style={{
+          background: 'rgba(255, 170, 0, 0.08)', border: '1px solid rgba(255, 170, 0, 0.3)',
+          borderRadius: '10px', padding: '10px 12px', marginBottom: '14px',
+          fontSize: '12px', color: 'var(--text-secondary)', lineHeight: 1.5,
+        }}>
+          {h2hData.synthetic
+            ? 'Datos de ejemplo (modo demostracion): no son enfrentamientos reales y no se usan en la prediccion.'
+            : 'No hay historial directo disponible ahora mismo. La prediccion no lo usa.'}
+        </div>
+      )}
+
       {/* Matchup Header Card */}
       <div style={{
         background: 'rgba(15, 22, 41, 0.8)',

@@ -26,6 +26,11 @@ import { readBlob, writeBlob } from './persistence.js';
 // Limite de seguridad. Antes eran 5000 y se borraban las mas antiguas,
 // lo que falseaba el historial publico: ahora el techo es mucho mayor.
 const MAX_STORED = 20000;
+
+// Version del motor que genero la prediccion. Las anteriores a la 2 se
+// hicieron con H2H inventado al azar (bug de inFlightRequests) y NO cuentan
+// en el informe: medirian ruido, no el modelo.
+export const ENGINE_VERSION = 2;
 // Margen tras el inicio antes de intentar resolver (partido + descuento).
 const SETTLE_DELAY_MS = 3 * 60 * 60 * 1000;
 // Una prediccion sin partido posterior tras estos dias se descarta del
@@ -71,7 +76,7 @@ export function recordPrediction({ leagueId, homeTeam, awayTeam, prediction, kic
   const s = load();
   const key = keyOf(leagueId, homeTeam.id, awayTeam.id);
 
-  const existing = s.predictions.find((p) => p.key === key && !p.settled);
+  const existing = s.predictions.find((p) => p.key === key && !p.settled && p.engineVersion === ENGINE_VERSION);
   if (existing) {
     // Si el partido se registro a mano y despues llega con su hora de
     // inicio conocida, se completa el dato (la fecha de creacion no cambia).
@@ -101,6 +106,7 @@ export function recordPrediction({ leagueId, homeTeam, awayTeam, prediction, kic
   const record = {
     id: `${key}:${Date.now()}`,
     key,
+    engineVersion: ENGINE_VERSION,
     leagueId,
     homeTeamId: homeTeam.id,
     awayTeamId: awayTeam.id,
@@ -291,7 +297,8 @@ export function getReport() {
 }
 
 export function buildReport(predictions) {
-  const resolved = predictions.filter((p) => p.settled && !p.expired);
+  const isClean = (p) => (p.engineVersion ?? 1) >= ENGINE_VERSION;
+  const resolved = predictions.filter((p) => p.settled && !p.expired && isClean(p));
 
   const rows = [];
   for (const rec of resolved) {
@@ -369,6 +376,7 @@ export function buildReport(predictions) {
     resumen: {
       prediccionesGuardadas: predictions.length,
       prediccionesDescartadas: predictions.filter((p) => p.expired).length,
+      prediccionesExcluidas: predictions.filter((p) => !isClean(p)).length,
       partidosResueltos: resolved.length,
       picksEvaluados: gradable,
       picksNoEvaluables: ungradable,
@@ -389,6 +397,8 @@ export function buildReport(predictions) {
     confianza: confidenceLevel(gradable),
     notaYield:
       'El yield simulado usa cuotas ESTIMADAS por el modelo (probabilidad cruda menos 6% de margen), no cuotas reales de ninguna casa. Sirve para comparar versiones del modelo, no para prometer ganancias: el rendimiento real depende de la cuota que ofrezca tu casa.',
+    notaExcluidas:
+      'Las predicciones guardadas antes de corregir el error del H2H se excluyen de este informe: se hicieron con datos inventados.',
     nota:
       'Corners, tarjetas, faltas, tiros y offsides no se pueden evaluar: ninguna de las dos APIs gratuitas devuelve esas estadisticas por partido.',
   };

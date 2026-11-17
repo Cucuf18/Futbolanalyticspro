@@ -254,6 +254,11 @@ export async function getLeagueStandings(leagueId = 'PL') {
 /* ──────────────────────────────────────────────────────
    Public API: Head-to-Head
    ────────────────────────────────────────────────────── */
+// Peticiones de historial de equipo en vuelo (para no duplicarlas). Esta
+// variable NO estaba definida: cada llamada lanzaba ReferenceError, caia
+// en el catch y el H2H acababa siendo siempre generateH2H (datos al azar).
+const inFlightRequests = new Map();
+
 export async function getH2HHistory(homeTeamId, awayTeamId, leagueId = 'PL') {
   const cacheKey = `h2h_${homeTeamId}_${awayTeamId}_${leagueId}`;
   const cached = getCached(cacheKey);
@@ -326,13 +331,37 @@ export async function getH2HHistory(homeTeamId, awayTeamId, leagueId = 'PL') {
     }
   }
 
-  // Fallback if no real H2H found or API rate limited
+  // Sin H2H real:
+  //  - con API key (produccion) se devuelve un H2H VACIO y marcado como no
+  //    disponible. Antes se inventaban 5 partidos al azar que entraban en
+  //    el calculo del xG y en la calidad de datos.
+  //  - sin API key (modo demo) se mantienen los datos de ejemplo, pero
+  //    marcados como sinteticos para que nunca alimenten al modelo.
   if (!h2hResult) {
-    h2hResult = generateH2H(homeTeam, awayTeam);
+    if (config.footballApiKey) {
+      h2hResult = emptyH2H(homeTeam, awayTeam);
+      // Corta duracion: puede ser un limite de peticiones pasajero.
+      setCache(cacheKey, h2hResult, 5 * 60 * 1000);
+      return h2hResult;
+    }
+    h2hResult = { ...generateH2H(homeTeam, awayTeam), synthetic: true, source: 'demo' };
+  } else {
+    h2hResult = { ...h2hResult, synthetic: false, source: 'api' };
   }
 
   setCache(cacheKey, h2hResult);
   return h2hResult;
+}
+
+export function emptyH2H(homeTeam, awayTeam) {
+  return {
+    homeTeam: { id: homeTeam.id, name: homeTeam.name, shortName: homeTeam.shortName },
+    awayTeam: { id: awayTeam.id, name: awayTeam.name, shortName: awayTeam.shortName },
+    summary: { totalMatches: 0, homeWins: 0, draws: 0, awayWins: 0, homeWinPct: 0, drawPct: 0, awayWinPct: 0 },
+    matches: [],
+    synthetic: false,
+    source: 'unavailable',
+  };
 }
 
 function generateH2H(homeTeam, awayTeam) {
@@ -493,7 +522,7 @@ export async function getMatchPredictionDetails(homeTeamId, awayTeamId, leagueId
   // Si el equipo no esta en la tabla se sigue usando el primero (para no
   // romper la pagina), pero esa prediccion NO se guarda en el historial:
   // estaria registrada a nombre de un equipo que nadie pidio.
-  const teamsResolved = Boolean(foundHome && foundAway);
+  const teamsResolved = Boolean(foundHome && foundAway) && standings.dataSource === 'live';
   const rawHome = foundHome || standings.teams[0];
   const rawAway = foundAway || standings.teams[1];
 
@@ -532,7 +561,7 @@ export async function getMatchPredictionDetails(homeTeamId, awayTeamId, leagueId
   const prediction = calculateMatchPrediction(
     homeTeam,
     awayTeam,
-    h2h.matches,
+    h2h.synthetic ? [] : h2h.matches,
     homeExternalStats,
     awayExternalStats,
     {
@@ -558,7 +587,7 @@ export async function getMatchPredictionDetails(homeTeamId, awayTeamId, leagueId
         source: opts.source ?? 'manual',
       });
     } else {
-      console.warn(`[Backtest] Equipos ${homeTeamId}/${awayTeamId} no encontrados en ${leagueId}: no se registra.`);
+      console.warn(`[Backtest] No se registra ${leagueId} ${homeTeamId}-${awayTeamId}: equipo no encontrado o datos no reales.`);
     }
   } catch (err) {
     console.warn('[Backtest] No se pudo registrar la prediccion:', err.message);

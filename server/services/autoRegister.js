@@ -2,6 +2,7 @@ import { config } from '../config.js';
 import { fetchFromApi } from './footballDataClient.js';
 import { getMatchPredictionDetails } from './sportsApi.js';
 import { readBlob } from './persistence.js';
+import { ENGINE_VERSION } from './backtest.js';
 
 /**
  * REGISTRO AUTOMATICO DE PREDICCIONES
@@ -46,7 +47,9 @@ export async function fixturesToRegister(now = Date.now()) {
 function alreadyRegistered() {
   const saved = readBlob('predictions');
   const keys = new Set();
-  for (const p of saved?.predictions || []) if (!p.settled) keys.add(p.key);
+  for (const p of saved?.predictions || []) {
+    if (!p.settled && p.engineVersion === ENGINE_VERSION) keys.add(p.key);
+  }
   return keys;
 }
 

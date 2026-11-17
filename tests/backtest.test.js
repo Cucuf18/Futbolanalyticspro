@@ -8,7 +8,7 @@ import fs from 'fs';
 process.env.DATA_DIR = fs.mkdtempSync(path.join(os.tmpdir(), 'fap-'));
 delete process.env.DATABASE_URL;
 
-const { gradePick, findMatchForPrediction, buildReport, settlePending, _resetStoreForTests, wilsonInterval, confidenceLevel } =
+const { ENGINE_VERSION, gradePick, findMatchForPrediction, buildReport, settlePending, _resetStoreForTests, wilsonInterval, confidenceLevel } =
   await import('../server/services/backtest.js');
 const { writeBlob, readBlob, _resetForTests } = await import('../server/services/persistence.js');
 
@@ -69,7 +69,7 @@ test('se elige el primer partido posterior y solo el cruce correcto', () => {
 });
 
 const pick = (probability, hit, marketType = 'GOLES', tier = 'safe') => ({ probability, hit, marketType, tier });
-const settled = (picks, extra = {}) => ({ settled: true, leagueId: 'PL', dataQuality: 0.7, picks, ...extra });
+const settled = (picks, extra = {}) => ({ settled: true, engineVersion: ENGINE_VERSION, leagueId: 'PL', dataQuality: 0.7, picks, ...extra });
 
 test('buildReport: calibracion y desvio (gap) por tramo', () => {
   const picks = [
@@ -172,4 +172,12 @@ test('buildReport separa registros automaticos de manuales', () => {
   ]);
   const keys = r.porOrigen.map((o) => o.key).sort();
   assert.deepEqual(keys, ['automatico', 'manual']);
+});
+
+test('las predicciones de versiones anteriores (H2H inventado) se excluyen del informe', () => {
+  const legacy = { settled: true, leagueId: 'PL', dataQuality: 0.7, picks: [pick(70, true)] }; // sin engineVersion
+  const r = buildReport([legacy, settled([pick(70, false)])]);
+  assert.equal(r.resumen.picksEvaluados, 1);
+  assert.equal(r.resumen.hitRate, 0);
+  assert.equal(r.resumen.prediccionesExcluidas, 1);
 });
