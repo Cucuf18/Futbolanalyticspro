@@ -18,6 +18,7 @@ import { gradePick, findMatchForPrediction, wilsonInterval, confidenceLevel } fr
  */
 
 const MAX_BETS = 5000;
+export const SPORTS = ['futbol', 'baloncesto', 'otro'];
 const KINDS = new Set(['RESULT', 'DOUBLE_CHANCE', 'HANDICAP', 'GOALS_TOTAL', 'TEAM_SCORES', 'TEAM_GOALS', 'BTTS']);
 
 const str = (v, max) => (typeof v === 'string' ? v.trim().slice(0, max) : '');
@@ -66,7 +67,10 @@ export function validateBetInput(body) {
       result: null, // true | false | 'void' | null (sin resolver)
     });
   }
-  return { bet: { stake: round2(stake), odds: round2(odds), legs, note: str(body.note, 200) } };
+  const sport = SPORTS.includes(body.sport) ? body.sport : 'futbol';
+  const closing = num(body.closingOdds);
+  if (closing !== null && (closing < 1.01 || closing > 1000)) return { error: 'La cuota de cierre debe estar entre 1.01 y 1000.' };
+  return { bet: { stake: round2(stake), odds: round2(odds), legs, note: str(body.note, 200), sport, closingOdds: closing === null ? null : round2(closing) } };
 }
 
 /* ─────────────── estado y pagos ─────────────── */
@@ -99,6 +103,17 @@ function finalize(bet, status, customPayout = null) {
   bet.payout = payoutFor(bet, status, customPayout);
   bet.settledAt = new Date().toISOString();
   bet.needsManual = false;
+}
+
+/**
+ * CLV (closing line value): cuota que conseguiste / cuota de cierre - 1.
+ * Positivo = pillaste un precio mejor que el del cierre, que es la mejor
+ * senal de que tomas buenas decisiones (el cierre es el precio mas
+ * informado). Con pocas apuestas es ruido, pero converge mucho antes
+ * que el yield.
+ */
+export function clvOf(bet) {
+  return typeof bet.closingOdds === 'number' && bet.closingOdds > 1 ? bet.odds / bet.closingOdds - 1 : null;
 }
 
 /* ─────────────── resumen ─────────────── */
@@ -154,6 +169,7 @@ export function summarize(bets, settings = {}) {
       .sort((a, b) => b.apuestas - a.apuestas);
   };
 
+  const clvs = bets.map(clvOf).filter((v) => v !== null);
   const n = graded.length;
   return {
     bancaInicial: initial,
@@ -177,6 +193,12 @@ export function summarize(bets, settings = {}) {
     // Por mercado solo cuentan las simples: en una combinada no se sabe
     // a que mercado atribuir el resultado.
     porMercado: group(graded.filter((b) => b.legs.length === 1), (b) => b.legs[0].marketType),
+    porDeporte: group(graded, (b) => b.sport || 'futbol'),
+    clv: {
+      apuestas: clvs.length,
+      medio: clvs.length ? round2((clvs.reduce((a, v) => a + v, 0) / clvs.length) * 100) : null,
+      positivas: clvs.filter((v) => v > 0).length,
+    },
     confianza: confidenceLevel(n),
     aviso:
       n < 100
@@ -245,6 +267,17 @@ export function resolveBet(id, status, customPayout = null) {
     if (customPayout !== null && (p === null || p < 0 || p > 1e9)) return { error: 'El cobro debe ser un numero valido.' };
     finalize(bet, status, p);
   }
+  save(data);
+  return { bet };
+}
+
+export function setClosingOdds(id, value) {
+  const v = value === null || value === '' ? null : num(value);
+  if (v !== null && (v < 1.01 || v > 1000)) return { error: 'La cuota de cierre debe estar entre 1.01 y 1000.' };
+  const data = load();
+  const bet = data.bets.find((b) => b.id === id);
+  if (!bet) return { error: 'No existe esa apuesta.', notFound: true };
+  bet.closingOdds = v === null ? null : round2(v);
   save(data);
   return { bet };
 }

@@ -67,7 +67,7 @@ export default function PredictionPanel({ predictionData, isPremium, onOpenPremi
         </div>
         <div style={{
           padding: '4px 12px', borderRadius: '12px', fontSize: '11px', fontWeight: 700,
-          background: isPremium ? 'linear-gradient(135deg, #ffe066 0%, #ffaa00 100%)' : 'rgba(255, 255, 255, 0.08)',
+          background: isPremium ? 'linear-gradient(135deg, #ffe066 0%, #f2b84b 100%)' : 'rgba(255, 255, 255, 0.08)',
           color: isPremium ? '#000' : 'var(--text-muted)',
           border: '1px solid rgba(255,255,255,0.1)', textTransform: 'uppercase', letterSpacing: '0.04em',
         }}>
@@ -87,8 +87,8 @@ export default function PredictionPanel({ predictionData, isPremium, onOpenPremi
         {/* Aviso honesto sobre el origen de los datos de cada equipo */}
         {dataWarnings.length > 0 && (
           <div style={{
-            background: 'rgba(255, 170, 0, 0.08)',
-            border: '1px solid rgba(255, 170, 0, 0.35)',
+            background: 'rgba(242, 184, 75, 0.08)',
+            border: '1px solid rgba(242, 184, 75, 0.35)',
             borderRadius: '12px',
             padding: '14px 16px',
             marginBottom: '20px',
@@ -125,15 +125,15 @@ export default function PredictionPanel({ predictionData, isPremium, onOpenPremi
               <h3 style={{ fontSize: '15px', fontWeight: 800, color: 'var(--text-primary)' }}>
                 Resumen Total del Partido
               </h3>
-              <div style={{ fontSize: '10px', fontWeight: 600, color: 'var(--accent-cyan)', background: 'rgba(0,242,254,0.1)', padding: '2px 8px', borderRadius: '6px', border: '1px solid rgba(0,242,254,0.2)' }}>
+              <div style={{ fontSize: '10px', fontWeight: 600, color: 'var(--accent-cyan)', background: 'rgba(108, 196, 240,0.1)', padding: '2px 8px', borderRadius: '6px', border: '1px solid rgba(108, 196, 240,0.2)' }}>
                 BASADO EN 10,000 SIMULACIONES
               </div>
             </div>
 
             {/* Main predicted score */}
             <div style={{
-              background: 'linear-gradient(135deg, rgba(157, 78, 221, 0.15) 0%, rgba(0, 242, 254, 0.1) 100%)',
-              border: '1px solid rgba(157, 78, 221, 0.3)',
+              background: 'linear-gradient(135deg, rgba(154, 134, 240, 0.15) 0%, rgba(108, 196, 240, 0.1) 100%)',
+              border: '1px solid rgba(154, 134, 240, 0.3)',
               borderRadius: '16px', padding: '20px', marginBottom: '16px', textAlign: 'center',
             }}>
               <div style={{ fontSize: '11px', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '8px' }}>
@@ -145,7 +145,7 @@ export default function PredictionPanel({ predictionData, isPremium, onOpenPremi
                 </div>
                 <div style={{
                   fontSize: '36px', fontWeight: 900, color: 'var(--accent-gold)',
-                  textShadow: '0 0 20px rgba(255,170,0,0.4)',
+                  textShadow: '0 0 20px rgba(242, 184, 75,0.4)',
                   letterSpacing: '4px',
                 }}>
                   {mostLikelyScore}
@@ -250,19 +250,19 @@ export default function PredictionPanel({ predictionData, isPremium, onOpenPremi
           </div>
           
           <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr 1fr', gap: '12px', textAlign: 'center', marginBottom: '12px' }}>
-            <div style={{ background: 'rgba(0, 242, 254, 0.08)', padding: '12px', borderRadius: '12px', border: '1px solid rgba(0, 242, 254, 0.2)' }}>
+            <div style={{ background: 'rgba(108, 196, 240, 0.08)', padding: '12px', borderRadius: '12px', border: '1px solid rgba(108, 196, 240, 0.2)' }}>
               <div style={{ fontSize: '12px', color: 'var(--accent-cyan)', fontWeight: 600 }}>{matchInfo?.homeTeam?.shortName ?? 'Local'}</div>
               <div style={{ fontSize: '28px', fontWeight: 800, color: 'var(--accent-cyan)' }}>{probabilities?.homeWin ?? 'N/A'}%</div>
               <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Victoria Local</div>
             </div>
 
-            <div style={{ background: 'rgba(255, 170, 0, 0.08)', padding: '12px', borderRadius: '12px', border: '1px solid rgba(255, 170, 0, 0.2)' }}>
+            <div style={{ background: 'rgba(242, 184, 75, 0.08)', padding: '12px', borderRadius: '12px', border: '1px solid rgba(242, 184, 75, 0.2)' }}>
               <div style={{ fontSize: '12px', color: 'var(--accent-gold)', fontWeight: 600 }}>Empate</div>
               <div style={{ fontSize: '28px', fontWeight: 800, color: 'var(--accent-gold)' }}>{probabilities?.draw ?? 'N/A'}%</div>
               <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Tablas</div>
             </div>
 
-            <div style={{ background: 'rgba(255, 61, 113, 0.08)', padding: '12px', borderRadius: '12px', border: '1px solid rgba(255, 61, 113, 0.2)' }}>
+            <div style={{ background: 'rgba(255, 101, 132, 0.08)', padding: '12px', borderRadius: '12px', border: '1px solid rgba(255, 101, 132, 0.2)' }}>
               <div style={{ fontSize: '12px', color: 'var(--accent-red)', fontWeight: 600 }}>{matchInfo?.awayTeam?.shortName ?? 'Visita'}</div>
               <div style={{ fontSize: '28px', fontWeight: 800, color: 'var(--accent-red)' }}>{probabilities?.awayWin ?? 'N/A'}%</div>
               <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Victoria Visitante</div>
@@ -338,7 +338,7 @@ export default function PredictionPanel({ predictionData, isPremium, onOpenPremi
                 { key: 'cards', label: 'Tarjetas', color: '#ffd600' },
                 { key: 'fouls', label: 'Faltas', color: '#ffb300' },
                 { key: 'shots', label: 'Remates', color: '#ff6d00' },
-                { key: 'shotsOnTarget', label: 'Tiros a puerta', color: '#00e676' },
+                { key: 'shotsOnTarget', label: 'Tiros a puerta', color: '#43d9a0' },
                 { key: 'offsides', label: 'Fueras de juego', color: '#ff5252' },
               ].map((item) => (
                 <div key={item.key} style={{
@@ -405,7 +405,7 @@ export default function PredictionPanel({ predictionData, isPremium, onOpenPremi
                 </h3>
                 <div style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>Resultados de 10,000 partidos virtuales basados en xG</div>
               </div>
-              <div style={{ fontSize: '11px', fontWeight: 700, background: 'rgba(255, 170, 0, 0.1)', color: 'var(--accent-gold)', padding: '4px 10px', borderRadius: '8px', border: '1px solid rgba(255,170,0,0.2)' }}>
+              <div style={{ fontSize: '11px', fontWeight: 700, background: 'rgba(242, 184, 75, 0.1)', color: 'var(--accent-gold)', padding: '4px 10px', borderRadius: '8px', border: '1px solid rgba(242, 184, 75,0.2)' }}>
                 10,000 ITERACIONES
               </div>
             </div>
@@ -439,7 +439,7 @@ export default function PredictionPanel({ predictionData, isPremium, onOpenPremi
                 <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginBottom: '12px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Marcadores Frecuentes</div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                   {prediction.monteCarlo?.topScores?.map((scoreObj, idx) => (
-                    <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 10px', background: 'rgba(255,255,255,0.03)', borderRadius: '8px', border: idx === 0 ? '1px solid rgba(255,170,0,0.3)' : '1px solid transparent' }}>
+                    <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 10px', background: 'rgba(255,255,255,0.03)', borderRadius: '8px', border: idx === 0 ? '1px solid rgba(242, 184, 75,0.3)' : '1px solid transparent' }}>
                       <div style={{ fontSize: '15px', fontWeight: 800, color: idx === 0 ? 'var(--accent-gold)' : 'var(--text-primary)' }}>{scoreObj.score}</div>
                       <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
                         <span style={{ fontWeight: 700, color: idx === 0 ? 'var(--accent-gold)' : 'inherit' }}>{scoreObj.percentage}%</span> de probabilidad
@@ -464,7 +464,7 @@ export default function PredictionPanel({ predictionData, isPremium, onOpenPremi
         }}>
           <div style={{
             width: '48px', height: '48px', borderRadius: '50%',
-            background: 'rgba(255, 170, 0, 0.15)', border: '2px solid rgba(255, 170, 0, 0.4)',
+            background: 'rgba(242, 184, 75, 0.15)', border: '2px solid rgba(242, 184, 75, 0.4)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             fontSize: '18px', fontWeight: 800, color: 'var(--accent-gold)', marginBottom: '12px',
           }}>P</div>
@@ -477,9 +477,9 @@ export default function PredictionPanel({ predictionData, isPremium, onOpenPremi
           <button
             onClick={onOpenPremiumModal}
             style={{
-              background: 'linear-gradient(135deg, #ffe066 0%, #ffaa00 100%)',
+              background: 'linear-gradient(135deg, #ffe066 0%, #f2b84b 100%)',
               color: '#000', fontWeight: 800, fontSize: '14px', padding: '12px 28px',
-              borderRadius: '14px', boxShadow: '0 6px 20px rgba(255, 170, 0, 0.4)',
+              borderRadius: '14px', boxShadow: '0 6px 20px rgba(242, 184, 75, 0.4)',
             }}
           >
             Desbloquear Predicciones

@@ -1,7 +1,7 @@
 import express from 'express';
 import crypto from 'crypto';
 import { probeApiFootball } from './services/apiFootballProbe.js';
-import { listBets, addBet, resolveBet, deleteBet, setInitialBankroll, settleBets } from './services/bets.js';
+import { listBets, addBet, resolveBet, deleteBet, setClosingOdds, setInitialBankroll, settleBets } from './services/bets.js';
 
 /**
  * Rutas de "Mis apuestas reales".
@@ -68,6 +68,12 @@ betsRouter.post('/settle', async (req, res) => {
 
 betsRouter.post('/:id/resolve', (req, res) => {
   const r = resolveBet(req.params.id, req.body?.status, req.body?.payout ?? null);
+  if (r.error) return fail(res, r);
+  res.json({ success: true, bet: r.bet, ...listBets() });
+});
+
+betsRouter.post('/:id/closing', (req, res) => {
+  const r = setClosingOdds(req.params.id, req.body?.odds ?? null);
   if (r.error) return fail(res, r);
   res.json({ success: true, bet: r.bet, ...listBets() });
 });

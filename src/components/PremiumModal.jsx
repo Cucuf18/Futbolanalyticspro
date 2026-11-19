@@ -19,8 +19,8 @@ export default function PremiumModal({ isOpen, onClose, onActivatePremium }) {
         maxWidth: '480px',
         width: '100%',
         padding: '32px',
-        border: '1px solid rgba(255, 170, 0, 0.3)',
-        boxShadow: '0 20px 50px rgba(0, 0, 0, 0.8), 0 0 30px rgba(255, 170, 0, 0.15)',
+        border: '1px solid rgba(242, 184, 75, 0.3)',
+        boxShadow: '0 20px 50px rgba(0, 0, 0, 0.8), 0 0 30px rgba(242, 184, 75, 0.15)',
         position: 'relative',
       }}>
         
@@ -44,12 +44,12 @@ export default function PremiumModal({ isOpen, onClose, onActivatePremium }) {
         <div style={{ textAlign: 'center', marginBottom: '24px' }}>
           <div style={{
             width: '56px', height: '56px', borderRadius: '16px',
-            background: 'linear-gradient(135deg, #ffe066 0%, #ffaa00 100%)',
+            background: 'linear-gradient(135deg, #ffe066 0%, #f2b84b 100%)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             margin: '0 auto 12px',
             fontSize: '22px', fontWeight: 800, color: '#000',
             fontFamily: 'var(--font-heading)',
-            boxShadow: '0 6px 20px rgba(255, 170, 0, 0.3)',
+            boxShadow: '0 6px 20px rgba(242, 184, 75, 0.3)',
           }}>
             P
           </div>
@@ -94,13 +94,13 @@ export default function PremiumModal({ isOpen, onClose, onActivatePremium }) {
           onClick={() => { onActivatePremium(); onClose(); }}
           style={{
             width: '100%',
-            background: 'linear-gradient(135deg, #ffe066 0%, #ffaa00 100%)',
+            background: 'linear-gradient(135deg, #ffe066 0%, #f2b84b 100%)',
             color: '#000',
             fontWeight: 800,
             fontSize: '15px',
             padding: '14px',
             borderRadius: '14px',
-            boxShadow: '0 6px 20px rgba(255, 170, 0, 0.4)',
+            boxShadow: '0 6px 20px rgba(242, 184, 75, 0.4)',
           }}
         >
           Activar Suscripcion Premium

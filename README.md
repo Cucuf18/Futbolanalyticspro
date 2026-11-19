@@ -283,3 +283,20 @@ Libro de apuestas guardado en el servidor (Postgres). Mide si ganas **dinero** c
 - Pestaña *Rendimiento → Mis apuestas reales*: banca, ganancia, **yield**, % de aciertos con intervalo de confianza, peor caída, racha y desglose por tipo y mercado, con aviso de cuánta muestra hay.
 - **Protegido con clave**: define la variable `BETS_TOKEN` en Render (una contraseña larga que solo tú conoces). Sin ella, las rutas `/api/bets` quedan desactivadas. Hay límite de intentos fallidos.
 - No modifica el modelo ni sus pesos: es solo contabilidad.
+
+
+## 📉 Backtest contra el mercado
+
+`scripts/backtest-market.mjs` prueba el modelo, partido a partido y sin mirar el futuro, contra cuotas reales (CSV gratuitos de football-data.co.uk). Resultado completo y método en [`docs/BACKTEST_MERCADO.md`](docs/BACKTEST_MERCADO.md). Resumen: **el modelo predice peor que Pinnacle y no tiene ventaja apostando**; cualquier mejora debe pasar esta misma prueba antes de usarse con dinero real.
+
+
+## 🏀 Baloncesto (NBA) — experimental
+
+- Datos de la API pública de ESPN (sin clave; **no es oficial** y puede cambiar sin aviso, por eso si falla la página lo dice en vez de inventar datos).
+- Modelo deliberadamente simple (rating de puntos con regresión a la media + ventaja de local). **No conoce lesiones, descanso ni viajes.**
+- Muestra la línea del mercado (cuando ESPN la publica) al lado del modelo.
+- Registra cada partido antes de que empiece y lo resuelve solo con el marcador final. La sección "Medición contra el mercado" compara Brier del modelo y del mercado **en los mismos partidos**. Hasta tener cientos de partidos no hay base para decir que el modelo aporta algo.
+
+## 📒 Apuestas manuales y CLV
+
+En *Rendimiento → Mis apuestas reales* se puede registrar una apuesta de cualquier deporte (monto, cuota, y opcionalmente la cuota de cierre). El **CLV** (cuota conseguida / cuota de cierre − 1) es la señal más rápida de si se toman buenas decisiones: converge mucho antes que el yield.

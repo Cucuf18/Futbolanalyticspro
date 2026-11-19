@@ -64,7 +64,7 @@ export default function HistoryTracker() {
             <div style={{ fontSize: '11px', color: 'var(--text-secondary)' }}>Predicciones Erradas</div>
           </div>
 
-          <div className="glass-card" style={{ padding: '24px', textAlign: 'center', background: 'linear-gradient(135deg, rgba(0,242,254,0.05) 0%, rgba(157,78,221,0.05) 100%)', border: '1px solid var(--accent-cyan)' }}>
+          <div className="glass-card" style={{ padding: '24px', textAlign: 'center', background: 'linear-gradient(135deg, rgba(108, 196, 240,0.05) 0%, rgba(154, 134, 240,0.05) 100%)', border: '1px solid var(--accent-cyan)' }}>
             <div style={{ fontSize: '12px', color: 'var(--accent-cyan)', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 700 }}>Hit Rate (Tasa de Acierto)</div>
             <div style={{ fontSize: '36px', fontWeight: 800, color: '#fff', marginTop: '4px' }}>{hitRate}%</div>
           </div>

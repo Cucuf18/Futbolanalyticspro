@@ -212,3 +212,45 @@ test('rutas: sin BETS_TOKEN configurado quedan desactivadas (503)', async () => 
     process.env.BETS_TOKEN = saved;
   }
 });
+
+test('apuesta manual de otro deporte: se guarda con deporte y cuota de cierre', () => {
+  _resetForTests();
+  const v = B.validateBetInput({
+    stake: 20, odds: 1.9, sport: 'baloncesto', closingOdds: 1.8,
+    legs: [{ label: 'Lakers -3.5', matchLabel: 'Lakers vs Celtics', marketType: 'HANDICAP' }],
+  });
+  assert.equal(v.bet.sport, 'baloncesto');
+  assert.equal(v.bet.closingOdds, 1.8);
+  assert.equal(v.bet.legs[0].auto, false); // sin datos para resolver sola
+  assert.equal(B.validateBetInput({ stake: 5, odds: 2, sport: 'curling', legs: [leg()] }).bet.sport, 'futbol');
+  assert.ok(B.validateBetInput({ stake: 5, odds: 2, closingOdds: 0.5, legs: [leg()] }).error);
+});
+
+test('CLV: mejor cuota que el cierre es positivo, peor es negativo, sin dato es null', () => {
+  assert.equal(Math.round(B.clvOf({ odds: 2.0, closingOdds: 1.8 }) * 1000) / 1000, 0.111);
+  assert.ok(B.clvOf({ odds: 1.7, closingOdds: 1.9 }) < 0);
+  assert.equal(B.clvOf({ odds: 2.0 }), null);
+  assert.equal(B.clvOf({ odds: 2.0, closingOdds: null }), null);
+});
+
+test('resumen: CLV medio y desglose por deporte', () => {
+  const bets = [
+    { ...settledBet(10, 2.0, 'WON', '2026-11-01T10:00:00Z'), closingOdds: 1.8, sport: 'futbol' },
+    { ...settledBet(10, 1.8, 'LOST', '2026-11-02T10:00:00Z'), closingOdds: 2.0, sport: 'baloncesto' },
+    settledBet(10, 2.0, 'LOST', '2026-11-03T10:00:00Z'),
+  ];
+  const s = B.summarize(bets);
+  assert.equal(s.clv.apuestas, 2);
+  assert.equal(s.clv.positivas, 1);
+  assert.equal(s.clv.medio, 0.56); // (+11.1% y -10%) / 2
+  assert.deepEqual(s.porDeporte.map((d) => d.key).sort(), ['baloncesto', 'futbol']);
+});
+
+test('poner y quitar la cuota de cierre de una apuesta', () => {
+  _resetForTests();
+  const { bet } = B.addBet({ stake: 10, odds: 2, legs: [leg()] });
+  assert.equal(B.setClosingOdds(bet.id, 1.85).bet.closingOdds, 1.85);
+  assert.equal(B.setClosingOdds(bet.id, null).bet.closingOdds, null);
+  assert.ok(B.setClosingOdds(bet.id, 0.9).error);
+  assert.equal(B.setClosingOdds('nope', 2).notFound, true);
+});

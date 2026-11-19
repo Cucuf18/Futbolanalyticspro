@@ -126,7 +126,7 @@ export default function BacktestReport() {
           onClick={settleNow}
           disabled={settling}
           style={{
-            background: 'rgba(0,242,254,0.1)', border: '1px solid var(--accent-cyan)',
+            background: 'rgba(108, 196, 240,0.1)', border: '1px solid var(--accent-cyan)',
             color: 'var(--accent-cyan)', padding: '8px 14px', borderRadius: '8px',
             fontSize: '12px', fontWeight: 700, cursor: settling ? 'wait' : 'pointer', whiteSpace: 'nowrap',
           }}
@@ -179,8 +179,8 @@ export default function BacktestReport() {
 
           <div style={{
             marginTop: '14px', padding: '12px 14px', borderRadius: '10px', fontSize: '12px', lineHeight: 1.55,
-            background: report.confianza === 'alta' || report.confianza === 'media' ? 'rgba(0,230,118,0.06)' : 'rgba(255,170,0,0.08)',
-            border: `1px solid ${report.confianza === 'alta' || report.confianza === 'media' ? 'rgba(0,230,118,0.3)' : 'rgba(255,170,0,0.3)'}`,
+            background: report.confianza === 'alta' || report.confianza === 'media' ? 'rgba(67, 217, 160,0.06)' : 'rgba(242, 184, 75,0.08)',
+            border: `1px solid ${report.confianza === 'alta' || report.confianza === 'media' ? 'rgba(67, 217, 160,0.3)' : 'rgba(242, 184, 75,0.3)'}`,
             color: 'var(--text-secondary)',
           }}>
             <strong style={{ color: 'var(--text-primary)' }}>Fiabilidad de esta medicion: {report.confianza}.</strong>{' '}

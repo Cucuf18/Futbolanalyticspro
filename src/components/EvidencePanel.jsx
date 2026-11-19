@@ -103,8 +103,8 @@ export default function EvidencePanel({ matchInfo, ratings, historySummary, comm
       {commonOpponents && commonOpponents.count > 0 && (
         <div style={{
           marginTop: '14px',
-          background: 'linear-gradient(135deg, rgba(0, 242, 254, 0.06) 0%, rgba(157, 78, 221, 0.06) 100%)',
-          border: '1px solid rgba(0, 242, 254, 0.25)',
+          background: 'linear-gradient(135deg, rgba(108, 196, 240, 0.06) 0%, rgba(154, 134, 240, 0.06) 100%)',
+          border: '1px solid rgba(108, 196, 240, 0.25)',
           borderRadius: '12px',
           padding: '14px 16px',
         }}>

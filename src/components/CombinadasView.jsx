@@ -146,7 +146,7 @@ export default function CombinadasView() {
                     {pick.riskLevel && (
                       <span style={{
                         padding: '2px 6px', borderRadius: '4px', fontSize: '10px', fontWeight: 800,
-                        background: pick.riskLevel === 'SAFE' ? 'rgba(0, 230, 118, 0.2)' : pick.riskLevel === 'MEDIUM' ? 'rgba(255, 170, 0, 0.2)' : 'rgba(255, 82, 82, 0.2)',
+                        background: pick.riskLevel === 'SAFE' ? 'rgba(67, 217, 160, 0.2)' : pick.riskLevel === 'MEDIUM' ? 'rgba(242, 184, 75, 0.2)' : 'rgba(255, 82, 82, 0.2)',
                         color: pick.riskLevel === 'SAFE' ? 'var(--accent-green)' : pick.riskLevel === 'MEDIUM' ? 'var(--accent-gold)' : 'var(--accent-red)'
                       }}>
                         {pick.riskLevel === 'SAFE' ? 'SEGURO' : pick.riskLevel === 'MEDIUM' ? 'MEDIO' : 'ALTO RIESGO'}
@@ -169,7 +169,7 @@ export default function CombinadasView() {
                       <button
                         onClick={() => settleBet(pick.matchId, 'WON')}
                         style={{
-                          background: 'rgba(0, 230, 118, 0.1)',
+                          background: 'rgba(67, 217, 160, 0.1)',
                           border: '1px solid var(--accent-green)',
                           color: 'var(--accent-green)',
                           padding: '6px 14px',
@@ -342,7 +342,7 @@ export default function CombinadasView() {
 
             {/* Hit rate big view */}
             <div style={{
-              background: 'linear-gradient(135deg, rgba(0, 242, 254, 0.05) 0%, rgba(157, 78, 221, 0.05) 100%)',
+              background: 'linear-gradient(135deg, rgba(108, 196, 240, 0.05) 0%, rgba(154, 134, 240, 0.05) 100%)',
               border: '1px solid var(--accent-cyan)',
               borderRadius: '12px',
               padding: '16px',

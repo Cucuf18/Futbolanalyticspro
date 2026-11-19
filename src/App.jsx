@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react';
+import BasketballView from './components/BasketballView';
 import { BrowserRouter, Routes, Route, useParams, useNavigate, useLocation } from 'react-router-dom';
 import Navbar from './components/Navbar';
 import LeagueSelector from './components/LeagueSelector';
@@ -160,9 +161,9 @@ function StandingsView() {
           <button 
             onClick={handlePredict} 
             style={{ 
-              background: 'linear-gradient(135deg, #00f2fe 0%, #4facfe 100%)', 
+              background: 'linear-gradient(135deg, #6cc4f0 0%, #6e9bf5 100%)', 
               color: '#080c16', padding: '16px 32px', borderRadius: '30px', 
-              fontWeight: 800, fontSize: '16px', boxShadow: '0 10px 30px rgba(0, 242, 254, 0.4)', 
+              fontWeight: 800, fontSize: '16px', boxShadow: '0 10px 30px rgba(108, 196, 240, 0.4)', 
               cursor: 'pointer', border: 'none', display: 'flex', alignItems: 'center', gap: '12px'
             }}
           >
@@ -255,6 +256,7 @@ function AppLayout() {
             <Route path="/predict/:routeLeagueId/:homeId/:awayId" element={<PredictorView isPremium={isPremium} onOpenPremiumModal={() => setIsPremiumModalOpen(true)} />} />
             <Route path="/tracker" element={<HistoryTracker />} />
             <Route path="/combinadas" element={<CombinadasView />} />
+            <Route path="/baloncesto" element={<BasketballView />} />
           </Routes>
         </div>
 

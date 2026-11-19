@@ -224,7 +224,7 @@ export default function BetSlip() {
                 <button
                   title="Marcar como Acertado"
                   onClick={() => settleBet(pick.matchId, 'WON')}
-                  style={{ background: 'rgba(0, 230, 118, 0.1)', border: '1px solid var(--accent-green)', color: 'var(--accent-green)', borderRadius: '4px', cursor: 'pointer', padding: '2px 6px', fontSize: '10px', fontWeight: 700 }}
+                  style={{ background: 'rgba(67, 217, 160, 0.1)', border: '1px solid var(--accent-green)', color: 'var(--accent-green)', borderRadius: '4px', cursor: 'pointer', padding: '2px 6px', fontSize: '10px', fontWeight: 700 }}
                 >
                   Ok
                 </button>
@@ -262,7 +262,7 @@ export default function BetSlip() {
         </div>
         <button
           onClick={registerBet} disabled={busy}
-          style={{ width: '100%', background: 'rgba(0, 230, 118, 0.12)', border: '1px solid var(--accent-green)', color: 'var(--accent-green)', padding: '8px', borderRadius: '8px', cursor: busy ? 'wait' : 'pointer', fontWeight: 800, fontSize: '12px' }}
+          style={{ width: '100%', background: 'rgba(67, 217, 160, 0.12)', border: '1px solid var(--accent-green)', color: 'var(--accent-green)', padding: '8px', borderRadius: '8px', cursor: busy ? 'wait' : 'pointer', fontWeight: 800, fontSize: '12px' }}
         >
           {busy ? 'Guardando...' : slip.length > 1 ? `Registrar combinada (${slip.length})` : 'Registrar apuesta'}
         </button>
@@ -278,7 +278,7 @@ export default function BetSlip() {
         style={{
           width: '100%',
           marginTop: '12px',
-          background: 'linear-gradient(135deg, #ffe066 0%, #ffaa00 100%)',
+          background: 'linear-gradient(135deg, #ffe066 0%, #f2b84b 100%)',
           color: '#000',
           border: 'none',
           padding: '10px',

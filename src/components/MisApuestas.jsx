@@ -35,6 +35,9 @@ export default function MisApuestas() {
   const [loading, setLoading] = useState(false);
   const [bankroll, setBankroll] = useState('');
   const [probe, setProbe] = useState(null);
+  const [showManual, setShowManual] = useState(false);
+  const [manual, setManual] = useState({ sport: 'futbol', desc: '', stake: '', odds: '', closing: '' });
+  const [manualMsg, setManualMsg] = useState(null);
   const [probing, setProbing] = useState(false);
 
   const load = useCallback(async () => {
@@ -121,17 +124,29 @@ export default function MisApuestas() {
             <Stat label="Yield" value={s.yield === null ? '—' : `${sign(s.yield)}${s.yield}%`} color={tone(s.yield)} hint="ganancia / apostado" />
             <Stat label="Aciertos" value={s.hitRate === null ? '—' : `${s.hitRate}%`} hint={`${s.ganadas} de ${s.liquidadas}${s.ic95 ? ` · IC95 ${s.ic95[0]}–${s.ic95[1]}%` : ''}`} />
             <Stat label="Peor caída" value={sol(s.maxDrawdown)} hint="de pico a valle" />
+            <Stat
+              label="CLV medio"
+              value={s.clv?.medio === null || s.clv?.medio === undefined ? '—' : `${sign(s.clv.medio)}${s.clv.medio}%`}
+              color={tone(s.clv?.medio)}
+              hint={s.clv?.apuestas ? `${s.clv.positivas} de ${s.clv.apuestas} mejor que el cierre` : 'pon la cuota de cierre'}
+            />
             <Stat label="Pendientes" value={s.pendientes} hint={s.porRevisar > 0 ? `${s.porRevisar} por revisar a mano` : 'se resuelven solas'} />
           </div>
 
           <div style={{
             marginTop: '14px', padding: '12px 14px', borderRadius: '10px', fontSize: '12px', lineHeight: 1.55, color: 'var(--text-secondary)',
-            background: s.confianza === 'muy baja' || s.confianza === 'baja' ? 'rgba(255,170,0,0.08)' : 'rgba(0,230,118,0.06)',
-            border: `1px solid ${s.confianza === 'muy baja' || s.confianza === 'baja' ? 'rgba(255,170,0,0.3)' : 'rgba(0,230,118,0.3)'}`,
+            background: s.confianza === 'muy baja' || s.confianza === 'baja' ? 'rgba(242, 184, 75,0.08)' : 'rgba(67, 217, 160,0.06)',
+            border: `1px solid ${s.confianza === 'muy baja' || s.confianza === 'baja' ? 'rgba(242, 184, 75,0.3)' : 'rgba(67, 217, 160,0.3)'}`,
           }}>
             <strong style={{ color: 'var(--text-primary)' }}>Fiabilidad de esta medición: {s.confianza}</strong> ({s.liquidadas} apuestas liquidadas).{' '}
             {s.aviso || 'Muestra grande: el yield ya es una guía sólida.'}
             {s.racha && <> Racha actual: {s.racha.cantidad} {s.racha.tipo === 'WON' ? 'ganada(s)' : 'perdida(s)'} seguida(s).</>}
+          </div>
+
+          <div style={{ fontSize: '11.5px', color: 'var(--text-muted)', marginTop: '8px', lineHeight: 1.5 }}>
+            <strong>CLV</strong> compara la cuota que conseguiste con la que había al empezar el partido. Si es positivo con frecuencia,
+            estás pillando mejores precios que el mercado final, y es la señal más rápida de que decides bien. Anota la cuota de cierre
+            (la que ves en tu casa justo antes de que empiece) en cada apuesta.
           </div>
 
           <div style={{ display: 'flex', gap: '8px', alignItems: 'center', margin: '14px 0', flexWrap: 'wrap' }}>
@@ -149,7 +164,7 @@ export default function MisApuestas() {
             </button>
           </div>
 
-          {(s.porTipo.length > 0 || s.porMercado.length > 0) && (
+          {(s.porTipo.length > 0 || s.porMercado.length > 0 || s.porDeporte?.length > 1) && (
             <div style={{ overflowX: 'auto', marginBottom: '14px' }}>
               <table style={{ width: '100%', fontSize: '12px', borderCollapse: 'collapse' }}>
                 <thead>
@@ -158,7 +173,7 @@ export default function MisApuestas() {
                   </tr>
                 </thead>
                 <tbody>
-                  {[...s.porTipo, ...s.porMercado.map((m) => ({ ...m, key: `Mercado: ${m.key}` }))].map((g) => (
+                  {[...s.porTipo, ...(s.porDeporte?.length > 1 ? s.porDeporte.map((m) => ({ ...m, key: `Deporte: ${m.key}` })) : []), ...s.porMercado.map((m) => ({ ...m, key: `Mercado: ${m.key}` }))].map((g) => (
                     <tr key={g.key} style={{ borderTop: '1px solid var(--glass-border)' }}>
                       <td style={{ padding: '6px', fontWeight: 600 }}>{g.key}</td>
                       <td>{g.apuestas}</td><td>{g.ganadas}</td><td>{sol(g.apostado)}</td>
@@ -196,6 +211,63 @@ export default function MisApuestas() {
         )}
       </div>
 
+      <div style={{ margin: '4px 0 16px' }}>
+        <button onClick={() => setShowManual((v) => !v)} style={btn('var(--accent-green)')}>
+          {showManual ? 'Cerrar formulario' : '+ Registrar apuesta manual (cualquier deporte)'}
+        </button>
+        {showManual && (
+          <div style={{ marginTop: '10px', padding: '14px', borderRadius: '12px', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--glass-border)', display: 'grid', gap: '8px' }}>
+            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+              <select
+                value={manual.sport} onChange={(e) => setManual({ ...manual, sport: e.target.value })}
+                style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid var(--glass-border)', borderRadius: '8px', color: 'var(--text-primary)', padding: '8px', fontSize: '12px' }}
+              >
+                <option value="futbol">Fútbol</option>
+                <option value="baloncesto">Baloncesto</option>
+                <option value="otro">Otro</option>
+              </select>
+              <input
+                value={manual.desc} onChange={(e) => setManual({ ...manual, desc: e.target.value })}
+                placeholder="Qué apostaste (ej. Lakers -3.5 vs Celtics)" maxLength={140}
+                style={{ flex: 1, minWidth: '200px', background: 'rgba(255,255,255,0.06)', border: '1px solid var(--glass-border)', borderRadius: '8px', color: 'var(--text-primary)', padding: '8px 10px', fontSize: '12px' }}
+              />
+            </div>
+            <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
+              {[['stake', 'Monto S/'], ['odds', 'Cuota que conseguiste'], ['closing', 'Cuota de cierre (opcional)']].map(([k, ph]) => (
+                <input
+                  key={k} inputMode="decimal" value={manual[k]} onChange={(e) => setManual({ ...manual, [k]: e.target.value })} placeholder={ph}
+                  style={{ flex: 1, minWidth: '120px', background: 'rgba(255,255,255,0.06)', border: '1px solid var(--glass-border)', borderRadius: '8px', color: 'var(--text-primary)', padding: '8px 10px', fontSize: '12px' }}
+                />
+              ))}
+            </div>
+            <div style={{ display: 'flex', gap: '10px', alignItems: 'center' }}>
+              <button
+                style={{ ...btn('var(--accent-green)'), padding: '7px 14px' }}
+                onClick={async () => {
+                  const num = (v) => parseFloat(String(v).replace(',', '.'));
+                  setManualMsg(null);
+                  try {
+                    const closing = manual.closing.trim() ? num(manual.closing) : null;
+                    const res = await betsApi.add({
+                      sport: manual.sport, stake: num(manual.stake), odds: num(manual.odds), closingOdds: closing,
+                      legs: [{ label: manual.desc.trim() || 'Apuesta manual', matchLabel: '', marketType: 'MANUAL' }],
+                    });
+                    setManualMsg({ ok: true, text: 'Registrada. Márcala como ganada o perdida cuando termine.' });
+                    setManual({ sport: manual.sport, desc: '', stake: '', odds: '', closing: '' });
+                    setData(await betsApi.list());
+                    return res;
+                  } catch (e) { setManualMsg({ ok: false, text: e.message }); }
+                  return null;
+                }}
+              >
+                Guardar apuesta
+              </button>
+              {manualMsg && <span style={{ fontSize: '12px', color: manualMsg.ok ? 'var(--accent-green)' : 'var(--accent-red)' }}>{manualMsg.text}</span>}
+            </div>
+          </div>
+        )}
+      </div>
+
       {data && data.bets.length === 0 && (
         <div style={{ textAlign: 'center', padding: '24px', color: 'var(--text-muted)', fontSize: '13px' }}>
           Aún no registraste apuestas. Agrega picks a tu boleto, escribe el monto y la cuota total de tu casa, y pulsa “Registrar”.
@@ -211,7 +283,7 @@ export default function MisApuestas() {
               <div key={b.id} style={{ padding: '14px', borderRadius: '12px', background: 'rgba(255,255,255,0.02)', borderLeft: `4px solid ${st.color}` }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', gap: '10px', flexWrap: 'wrap' }}>
                   <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
-                    {b.legs.length > 1 ? `Combinada de ${b.legs.length}` : 'Simple'} · {new Date(b.createdAt).toLocaleDateString('es-PE')} · {sol(b.stake)} a @{b.odds}
+                    {b.legs.length > 1 ? `Combinada de ${b.legs.length}` : 'Simple'} · {b.sport || 'futbol'} · {new Date(b.createdAt).toLocaleDateString('es-PE')} · {sol(b.stake)} a @{b.odds}
                   </div>
                   <div style={{ textAlign: 'right' }}>
                     <span style={{ fontSize: '12px', fontWeight: 800, color: st.color }}>{st.label}</span>
@@ -227,6 +299,24 @@ export default function MisApuestas() {
                       {!l.auto && l.result === null && <span style={{ color: 'var(--accent-gold)', fontSize: '11px' }}> · se resuelve a mano</span>}
                     </div>
                   ))}
+                </div>
+                <div style={{ marginTop: '8px', display: 'flex', gap: '6px', alignItems: 'center', flexWrap: 'wrap', fontSize: '11.5px', color: 'var(--text-muted)' }}>
+                  <span>Cuota de cierre:</span>
+                  <input
+                    key={`${b.id}-${b.closingOdds ?? ''}`} defaultValue={b.closingOdds ?? ''} inputMode="decimal" placeholder="—"
+                    onBlur={(e) => {
+                      const v = e.target.value.trim();
+                      const cur = b.closingOdds === null || b.closingOdds === undefined ? '' : String(b.closingOdds);
+                      if (v === cur) return;
+                      run(() => betsApi.setClosing(b.id, v === '' ? null : parseFloat(v.replace(',', '.'))));
+                    }}
+                    style={{ width: '70px', background: 'rgba(255,255,255,0.06)', border: '1px solid var(--glass-border)', borderRadius: '6px', color: 'var(--text-primary)', padding: '3px 6px', fontSize: '11.5px' }}
+                  />
+                  {b.closingOdds ? (
+                    <span style={{ color: tone(b.odds / b.closingOdds - 1), fontWeight: 700 }}>
+                      CLV {sign(b.odds / b.closingOdds - 1)}{((b.odds / b.closingOdds - 1) * 100).toFixed(1)}%
+                    </span>
+                  ) : null}
                 </div>
                 <div style={{ display: 'flex', gap: '6px', marginTop: '10px', flexWrap: 'wrap' }}>
                   {b.status === 'PENDING' ? (

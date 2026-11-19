@@ -14,7 +14,7 @@ export default function H2HViewer({ h2hData }) {
 
       {(h2hData.synthetic || h2hData.source === 'unavailable') && (
         <div style={{
-          background: 'rgba(255, 170, 0, 0.08)', border: '1px solid rgba(255, 170, 0, 0.3)',
+          background: 'rgba(242, 184, 75, 0.08)', border: '1px solid rgba(242, 184, 75, 0.3)',
           borderRadius: '10px', padding: '10px 12px', marginBottom: '14px',
           fontSize: '12px', color: 'var(--text-secondary)', lineHeight: 1.5,
         }}>

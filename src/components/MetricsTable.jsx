@@ -19,9 +19,9 @@ export default function MetricsTable({ standings, homeTeamId, awayTeamId, onSele
           <span style={{
             fontSize: '10px', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em',
             padding: '4px 10px', borderRadius: '8px',
-            background: standings.dataSource === 'live' ? 'rgba(0,230,118,0.1)' : 'rgba(255,170,0,0.08)',
+            background: standings.dataSource === 'live' ? 'rgba(67, 217, 160,0.1)' : 'rgba(242, 184, 75,0.08)',
             color: standings.dataSource === 'live' ? 'var(--accent-green)' : 'var(--accent-gold)',
-            border: `1px solid ${standings.dataSource === 'live' ? 'rgba(0,230,118,0.3)' : 'rgba(255,170,0,0.2)'}`,
+            border: `1px solid ${standings.dataSource === 'live' ? 'rgba(67, 217, 160,0.3)' : 'rgba(242, 184, 75,0.2)'}`,
           }}>
             {standings.dataSource === 'live' ? 'En Vivo' : 'Simulado'}
           </span>
@@ -54,7 +54,7 @@ export default function MetricsTable({ standings, homeTeamId, awayTeamId, onSele
                   key={team.id}
                   style={{
                     borderBottom: '1px solid rgba(255, 255, 255, 0.04)',
-                    background: isHome ? 'rgba(0, 242, 254, 0.08)' : isAway ? 'rgba(255, 61, 113, 0.08)' : 'transparent',
+                    background: isHome ? 'rgba(108, 196, 240, 0.08)' : isAway ? 'rgba(255, 101, 132, 0.08)' : 'transparent',
                     transition: 'var(--transition-fast)',
                   }}
                 >
@@ -104,9 +104,9 @@ export default function MetricsTable({ standings, homeTeamId, awayTeamId, onSele
                         fontSize: '11px',
                         fontWeight: 600,
                         marginRight: '4px',
-                        background: isHome ? 'var(--accent-cyan)' : 'rgba(0, 242, 254, 0.15)',
+                        background: isHome ? 'var(--accent-cyan)' : 'rgba(108, 196, 240, 0.15)',
                         color: isHome ? '#080c16' : 'var(--accent-cyan)',
-                        border: '1px solid rgba(0, 242, 254, 0.3)',
+                        border: '1px solid rgba(108, 196, 240, 0.3)',
                       }}
                     >
                       {isHome ? 'Local >' : 'Local'}
@@ -119,9 +119,9 @@ export default function MetricsTable({ standings, homeTeamId, awayTeamId, onSele
                         borderRadius: '6px',
                         fontSize: '11px',
                         fontWeight: 600,
-                        background: isAway ? 'var(--accent-red)' : 'rgba(255, 61, 113, 0.15)',
+                        background: isAway ? 'var(--accent-red)' : 'rgba(255, 101, 132, 0.15)',
                         color: isAway ? '#fff' : 'var(--accent-red)',
-                        border: '1px solid rgba(255, 61, 113, 0.3)',
+                        border: '1px solid rgba(255, 101, 132, 0.3)',
                       }}
                     >
                       {isAway ? 'Visit. >' : 'Visit.'}

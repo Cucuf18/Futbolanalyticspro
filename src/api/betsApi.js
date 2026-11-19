@@ -36,6 +36,7 @@ export const betsApi = {
   add: (bet) => call('', { method: 'POST', body: JSON.stringify(bet) }),
   resolve: (id, status, payout) =>
     call(`/${id}/resolve`, { method: 'POST', body: JSON.stringify({ status, ...(payout != null ? { payout } : {}) }) }),
+  setClosing: (id, odds) => call(`/${id}/closing`, { method: 'POST', body: JSON.stringify({ odds }) }),
   remove: (id) => call(`/${id}`, { method: 'DELETE' }),
   setBankroll: (initialBankroll) => call('/settings', { method: 'PUT', body: JSON.stringify({ initialBankroll }) }),
   settleNow: () => call('/settle', { method: 'POST' }),

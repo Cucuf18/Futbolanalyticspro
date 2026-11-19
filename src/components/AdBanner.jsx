@@ -22,7 +22,7 @@ export default function AdBanner({ slotId = 'default-slot' }) {
       <div style={{
         position: 'absolute',
         top: 0, left: 0, right: 0, bottom: 0,
-        background: 'linear-gradient(90deg, rgba(0,242,254,0.03) 0%, rgba(157,78,221,0.03) 100%)',
+        background: 'linear-gradient(90deg, rgba(108, 196, 240,0.03) 0%, rgba(154, 134, 240,0.03) 100%)',
         pointerEvents: 'none',
       }} />
 

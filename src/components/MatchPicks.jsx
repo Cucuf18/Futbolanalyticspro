@@ -2,21 +2,21 @@ import React, { useState } from 'react';
 import { useBetSlip } from '../context/BetSlipContext';
 
 const MARKET_CONFIG = {
-  RESULTADO: { icon: '1X2', color: '#00f2fe', gradient: 'rgba(0, 242, 254, 0.15)', border: 'rgba(0, 242, 254, 0.4)', label: 'RESULTADO' },
+  RESULTADO: { icon: '1X2', color: '#6cc4f0', gradient: 'rgba(108, 196, 240, 0.15)', border: 'rgba(108, 196, 240, 0.4)', label: 'RESULTADO' },
   DOBLE: { icon: 'DC', color: '#26c6da', gradient: 'rgba(38, 198, 218, 0.15)', border: 'rgba(38, 198, 218, 0.4)', label: 'DOBLE OPORTUNIDAD' },
-  HANDICAP: { icon: 'AH', color: '#9d4edd', gradient: 'rgba(157, 78, 221, 0.15)', border: 'rgba(157, 78, 221, 0.4)', label: 'HANDICAP' },
-  GOLES: { icon: 'GOL', color: '#00e676', gradient: 'rgba(0, 230, 118, 0.15)', border: 'rgba(0, 230, 118, 0.4)', label: 'GOLES' },
+  HANDICAP: { icon: 'AH', color: '#9d4edd', gradient: 'rgba(154, 134, 240, 0.15)', border: 'rgba(154, 134, 240, 0.4)', label: 'HANDICAP' },
+  GOLES: { icon: 'GOL', color: '#43d9a0', gradient: 'rgba(67, 217, 160, 0.15)', border: 'rgba(67, 217, 160, 0.4)', label: 'GOLES' },
   TARJETAS: { icon: 'TAR', color: '#ffd600', gradient: 'rgba(255, 214, 0, 0.15)', border: 'rgba(255, 214, 0, 0.4)', label: 'TARJETAS' },
   TIROS: { icon: 'TIR', color: '#ff6d00', gradient: 'rgba(255, 109, 0, 0.15)', border: 'rgba(255, 109, 0, 0.4)', label: 'TIROS / REMATES' },
   CORNERS: { icon: 'COR', color: '#448aff', gradient: 'rgba(68, 138, 255, 0.15)', border: 'rgba(68, 138, 255, 0.4)', label: 'CORNERS' },
   OFFSIDES: { icon: 'OFF', color: '#ff5252', gradient: 'rgba(255, 82, 82, 0.15)', border: 'rgba(255, 82, 82, 0.4)', label: 'FUERAS DE JUEGO' },
   FALTAS: { icon: 'FAL', color: '#ffb300', gradient: 'rgba(255, 179, 0, 0.15)', border: 'rgba(255, 179, 0, 0.4)', label: 'FALTAS' },
-  BTTS: { icon: 'B2S', color: '#00e676', gradient: 'rgba(0, 230, 118, 0.15)', border: 'rgba(0, 230, 118, 0.4)', label: 'AMBOS ANOTAN' },
+  BTTS: { icon: 'B2S', color: '#43d9a0', gradient: 'rgba(67, 217, 160, 0.15)', border: 'rgba(67, 217, 160, 0.4)', label: 'AMBOS ANOTAN' },
 };
 
 const RISK_CONFIG = {
-  safe: { label: 'Seguros', color: 'var(--accent-green)', bg: 'rgba(0, 230, 118, 0.1)' },
-  medium: { label: 'Medio Riesgo', color: 'var(--accent-gold)', bg: 'rgba(255, 170, 0, 0.1)' },
+  safe: { label: 'Seguros', color: 'var(--accent-green)', bg: 'rgba(67, 217, 160, 0.1)' },
+  medium: { label: 'Medio Riesgo', color: 'var(--accent-gold)', bg: 'rgba(242, 184, 75, 0.1)' },
   risky: { label: 'Alto Riesgo', color: 'var(--accent-red)', bg: 'rgba(255, 82, 82, 0.1)' },
 };
 
@@ -85,8 +85,8 @@ function PickCard({ pick, matchInfo, riskLevel }) {
               style={{
                 display: 'inline-block', marginTop: '4px', padding: '2px 6px', borderRadius: '5px',
                 fontSize: '9px', fontWeight: 800, letterSpacing: '0.03em',
-                background: 'rgba(255, 170, 0, 0.12)', color: 'var(--accent-gold)',
-                border: '1px solid rgba(255, 170, 0, 0.3)',
+                background: 'rgba(242, 184, 75, 0.12)', color: 'var(--accent-gold)',
+                border: '1px solid rgba(242, 184, 75, 0.3)',
               }}
             >
               SIN VERIFICAR
@@ -98,8 +98,8 @@ function PickCard({ pick, matchInfo, riskLevel }) {
               style={{
                 display: 'inline-block', marginTop: '4px', padding: '2px 6px', borderRadius: '5px',
                 fontSize: '9px', fontWeight: 800, letterSpacing: '0.03em',
-                background: 'rgba(0, 230, 118, 0.12)', color: 'var(--accent-green)',
-                border: '1px solid rgba(0, 230, 118, 0.3)',
+                background: 'rgba(67, 217, 160, 0.12)', color: 'var(--accent-green)',
+                border: '1px solid rgba(67, 217, 160, 0.3)',
               }}
             >
               VERIFICADO
@@ -147,9 +147,9 @@ function PickCard({ pick, matchInfo, riskLevel }) {
         {hasTypedOdds && (
           <span style={{
             padding: '6px 10px', borderRadius: '8px', fontSize: '11px', fontWeight: 800, whiteSpace: 'nowrap',
-            background: valueEdge > 0 ? 'rgba(0,230,118,0.15)' : 'rgba(255,82,82,0.15)',
+            background: valueEdge > 0 ? 'rgba(67, 217, 160,0.15)' : 'rgba(255,82,82,0.15)',
             color: valueEdge > 0 ? 'var(--accent-green)' : 'var(--accent-red)',
-            border: `1px solid ${valueEdge > 0 ? 'rgba(0,230,118,0.4)' : 'rgba(255,82,82,0.4)'}`,
+            border: `1px solid ${valueEdge > 0 ? 'rgba(67, 217, 160,0.4)' : 'rgba(255,82,82,0.4)'}`,
           }}>
             {valueEdge > 0 ? `VALOR +${valueEdge.toFixed(1)}%` : `SIN VALOR ${valueEdge.toFixed(1)}%`}
           </span>
@@ -217,9 +217,9 @@ export default function MatchPicks({ matchPicks, matchInfo, dataQuality, leagueT
         {typeof dataQuality === 'number' && (
           <span style={{
             fontSize: '10px', fontWeight: 700, padding: '3px 8px', borderRadius: '6px',
-            background: lowData ? 'rgba(255,82,82,0.12)' : 'rgba(0,230,118,0.12)',
+            background: lowData ? 'rgba(255,82,82,0.12)' : 'rgba(67, 217, 160,0.12)',
             color: lowData ? 'var(--accent-red)' : 'var(--accent-green)',
-            border: `1px solid ${lowData ? 'rgba(255,82,82,0.35)' : 'rgba(0,230,118,0.35)'}`,
+            border: `1px solid ${lowData ? 'rgba(255,82,82,0.35)' : 'rgba(67, 217, 160,0.35)'}`,
           }}>
             CALIDAD DE DATOS {Math.round(dataQuality * 100)}%
           </span>
@@ -240,7 +240,7 @@ export default function MatchPicks({ matchPicks, matchInfo, dataQuality, leagueT
       )}
       {typeof dataQuality === 'number' && dataQuality >= 0.40 && dataQuality < 0.60 && (
         <div style={{
-          background: 'rgba(255, 170, 0, 0.06)', border: '1px solid rgba(255, 170, 0, 0.25)',
+          background: 'rgba(242, 184, 75, 0.06)', border: '1px solid rgba(242, 184, 75, 0.25)',
           borderRadius: '10px', padding: '8px 12px', marginBottom: '14px',
           fontSize: '11.5px', color: 'var(--text-secondary)', lineHeight: 1.45,
         }}>
@@ -250,7 +250,7 @@ export default function MatchPicks({ matchPicks, matchInfo, dataQuality, leagueT
 
       {leagueTendencies && leagueTendencies.length > 0 && (
         <div style={{
-          background: 'rgba(0, 242, 254, 0.05)', border: '1px solid rgba(0, 242, 254, 0.2)',
+          background: 'rgba(108, 196, 240, 0.05)', border: '1px solid rgba(108, 196, 240, 0.2)',
           borderRadius: '10px', padding: '10px 12px', marginBottom: '14px',
         }}>
           <div style={{ fontSize: '10px', fontWeight: 800, color: 'var(--accent-cyan)', textTransform: 'uppercase', letterSpacing: '0.05em', marginBottom: '4px' }}>
@@ -284,7 +284,7 @@ export default function MatchPicks({ matchPicks, matchInfo, dataQuality, leagueT
 
       {currentPicks.some((p) => p.verified === false) && (
         <div style={{
-          background: 'rgba(255, 170, 0, 0.06)', border: '1px solid rgba(255, 170, 0, 0.25)',
+          background: 'rgba(242, 184, 75, 0.06)', border: '1px solid rgba(242, 184, 75, 0.25)',
           borderRadius: '10px', padding: '10px 12px', marginBottom: '12px',
           fontSize: '11.5px', color: 'var(--text-secondary)', lineHeight: 1.5,
         }}>
@@ -298,7 +298,7 @@ export default function MatchPicks({ matchPicks, matchInfo, dataQuality, leagueT
 
       {hasCorrelation && (
         <div style={{
-          background: 'rgba(255, 170, 0, 0.08)', border: '1px solid rgba(255, 170, 0, 0.3)',
+          background: 'rgba(242, 184, 75, 0.08)', border: '1px solid rgba(242, 184, 75, 0.3)',
           borderRadius: '10px', padding: '10px 12px', marginBottom: '12px',
           fontSize: '11.5px', color: 'var(--accent-gold)', lineHeight: 1.45,
         }}>

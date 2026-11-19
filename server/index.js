@@ -13,6 +13,7 @@ import { initPersistence, usingDatabase } from './services/persistence.js';
 import { runAutoRegister } from './services/autoRegister.js';
 import { betsRouter, diagRouter } from './betsRoutes.js';
 import { settleBets } from './services/bets.js';
+import { getUpcoming, recordGames, getBasketballReport, autoRun as basketballAutoRun } from './services/basketball.js';
 
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
@@ -162,6 +163,23 @@ app.get('/api/weights', (req, res) => {
   }
 });
 
+// Baloncesto (datos de ESPN, sin clave). Publico: es informacion, no datos personales.
+app.get('/api/basketball/games', async (req, res) => {
+  try {
+    const days = Math.min(5, Math.max(1, Number.parseInt(req.query.days, 10) || 3));
+    const games = await getUpcoming(days);
+    // Se registran todos los partidos que aun no empezaron (no solo los que alguien mira).
+    recordGames(games);
+    res.json({ success: true, source: 'espn', fetchedAt: new Date().toISOString(), games });
+  } catch (err) {
+    res.status(502).json({ success: false, error: `No se pudo leer ESPN ahora mismo (${err.message}).` });
+  }
+});
+
+app.get('/api/basketball/report', (req, res) => {
+  res.json({ success: true, report: getBasketballReport() });
+});
+
 // Mis apuestas reales (protegidas con BETS_TOKEN)
 app.use('/api/bets', betsRouter);
 app.use('/api/diag', diagRouter);
@@ -214,6 +232,17 @@ async function autoRegister() {
 // Se espera unos minutos tras arrancar para no competir con las
 // primeras visitas por el cupo de la API.
 setTimeout(autoRegister, 3 * 60 * 1000).unref?.();
+
+async function basketballJob() {
+  try {
+    const r = await basketballAutoRun();
+    if (r.added > 0 || r.settled > 0) console.log(`[Baloncesto] ${r.added} registrados, ${r.settled} resueltos.`);
+  } catch (err) {
+    console.warn('[Baloncesto] Fallo la pasada:', err.message);
+  }
+}
+setTimeout(basketballJob, 5 * 60 * 1000).unref?.();
+setInterval(basketballJob, AUTO_REGISTER_INTERVAL_MS).unref?.();
 setInterval(autoRegister, AUTO_REGISTER_INTERVAL_MS).unref?.();
 
 // Un primer pase al arrancar (con margen para no competir con el
