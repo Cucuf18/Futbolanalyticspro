@@ -30,7 +30,7 @@ export default function PremiumModal({ isOpen, onClose, onActivatePremium }) {
           style={{
             position: 'absolute',
             top: '16px', right: '16px',
-            background: 'rgba(255,255,255,0.08)',
+            background: 'rgba(var(--ov), 0.08)',
             color: 'var(--text-muted)',
             width: '32px', height: '32px',
             borderRadius: '50%',
@@ -80,7 +80,7 @@ export default function PremiumModal({ isOpen, onClose, onActivatePremium }) {
 
         {/* Pricing */}
         <div style={{
-          background: 'rgba(15, 22, 41, 0.9)', padding: '16px', borderRadius: '16px',
+          background: 'rgba(var(--panel), 0.9)', padding: '16px', borderRadius: '16px',
           border: '1px solid var(--glass-border)', textAlign: 'center', marginBottom: '20px',
         }}>
           <div style={{ fontSize: '11px', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>Acceso Total</div>

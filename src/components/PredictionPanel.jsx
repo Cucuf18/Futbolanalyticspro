@@ -3,6 +3,7 @@ import { useBetSlip } from '../context/BetSlipContext';
 import DepthMetrics from './DepthMetrics';
 import MatchPicks from './MatchPicks';
 import EvidencePanel from './EvidencePanel';
+import MarketCompare from './MarketCompare';
 
 export default function PredictionPanel({ predictionData, isPremium, onOpenPremiumModal }) {
   const { addToSlip } = useBetSlip();
@@ -67,9 +68,9 @@ export default function PredictionPanel({ predictionData, isPremium, onOpenPremi
         </div>
         <div style={{
           padding: '4px 12px', borderRadius: '12px', fontSize: '11px', fontWeight: 700,
-          background: isPremium ? 'linear-gradient(135deg, #ffe066 0%, #f2b84b 100%)' : 'rgba(255, 255, 255, 0.08)',
+          background: isPremium ? 'linear-gradient(135deg, #ffe066 0%, #f2b84b 100%)' : 'rgba(var(--ov), 0.08)',
           color: isPremium ? '#000' : 'var(--text-muted)',
-          border: '1px solid rgba(255,255,255,0.1)', textTransform: 'uppercase', letterSpacing: '0.04em',
+          border: '1px solid rgba(var(--ov), 0.1)', textTransform: 'uppercase', letterSpacing: '0.04em',
         }}>
           {isPremium ? 'Acceso Premium' : 'Contenido Restringido'}
         </div>
@@ -164,7 +165,7 @@ export default function PredictionPanel({ predictionData, isPremium, onOpenPremi
               
               {/* Total Goals */}
               <div style={{
-                background: 'rgba(15, 22, 41, 0.7)', padding: '14px', borderRadius: '14px',
+                background: 'rgba(var(--panel), 0.7)', padding: '14px', borderRadius: '14px',
                 border: '1px solid var(--glass-border)', textAlign: 'center',
               }}>
                 <div style={{ fontSize: '22px', marginBottom: '6px' }}>⚽</div>
@@ -177,7 +178,7 @@ export default function PredictionPanel({ predictionData, isPremium, onOpenPremi
 
               {/* BTTS */}
               <div style={{
-                background: 'rgba(15, 22, 41, 0.7)', padding: '14px', borderRadius: '14px',
+                background: 'rgba(var(--panel), 0.7)', padding: '14px', borderRadius: '14px',
                 border: '1px solid var(--glass-border)', textAlign: 'center',
               }}>
                 <div style={{ fontSize: '22px', marginBottom: '6px' }}>🎯</div>
@@ -190,7 +191,7 @@ export default function PredictionPanel({ predictionData, isPremium, onOpenPremi
 
               {/* Yellow Cards */}
               <div style={{
-                background: 'rgba(15, 22, 41, 0.7)', padding: '14px', borderRadius: '14px',
+                background: 'rgba(var(--panel), 0.7)', padding: '14px', borderRadius: '14px',
                 border: '1px solid var(--glass-border)', textAlign: 'center',
               }}>
                 <div style={{ fontSize: '22px', marginBottom: '6px' }}>🟨</div>
@@ -203,7 +204,7 @@ export default function PredictionPanel({ predictionData, isPremium, onOpenPremi
 
               {/* Offsides */}
               <div style={{
-                background: 'rgba(15, 22, 41, 0.7)', padding: '14px', borderRadius: '14px',
+                background: 'rgba(var(--panel), 0.7)', padding: '14px', borderRadius: '14px',
                 border: '1px solid var(--glass-border)', textAlign: 'center',
               }}>
                 <div style={{ fontSize: '22px', marginBottom: '6px' }}>🚩</div>
@@ -216,7 +217,7 @@ export default function PredictionPanel({ predictionData, isPremium, onOpenPremi
 
               {/* Shots on Target */}
               <div style={{
-                background: 'rgba(15, 22, 41, 0.7)', padding: '14px', borderRadius: '14px',
+                background: 'rgba(var(--panel), 0.7)', padding: '14px', borderRadius: '14px',
                 border: '1px solid var(--glass-border)', textAlign: 'center',
               }}>
                 <div style={{ fontSize: '22px', marginBottom: '6px' }}>🥅</div>
@@ -229,7 +230,7 @@ export default function PredictionPanel({ predictionData, isPremium, onOpenPremi
 
               {/* Corners */}
               <div style={{
-                background: 'rgba(15, 22, 41, 0.7)', padding: '14px', borderRadius: '14px',
+                background: 'rgba(var(--panel), 0.7)', padding: '14px', borderRadius: '14px',
                 border: '1px solid var(--glass-border)', textAlign: 'center',
               }}>
                 <div style={{ fontSize: '22px', marginBottom: '6px' }}>📐</div>
@@ -270,6 +271,9 @@ export default function PredictionPanel({ predictionData, isPremium, onOpenPremi
           </div>
         </div>
 
+        {/* ========== MERCADO VS MODELO ========== */}
+        <MarketCompare matchInfo={matchInfo} probabilities={probabilities} probabilitiesSecondary={probabilitiesSecondary} />
+
         {/* ========== DEPTH METRICS ========== */}
         <DepthMetrics
           homeTeam={matchInfo.homeTeam}
@@ -280,7 +284,7 @@ export default function PredictionPanel({ predictionData, isPremium, onOpenPremi
         {/* ========== DETAILED METRICS ========== */}
         <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '14px', marginBottom: '24px' }}>
           
-          <div style={{ background: 'rgba(15, 22, 41, 0.7)', padding: '14px', borderRadius: '14px', border: '1px solid var(--glass-border)' }}>
+          <div style={{ background: 'rgba(var(--panel), 0.7)', padding: '14px', borderRadius: '14px', border: '1px solid var(--glass-border)' }}>
             <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Goles Esperados (xG)</div>
             <div style={{ fontSize: '20px', fontWeight: 800, color: 'var(--accent-purple)' }}>
               {expectedGoals?.home ?? 'N/A'} – {expectedGoals?.away ?? 'N/A'}
@@ -290,7 +294,7 @@ export default function PredictionPanel({ predictionData, isPremium, onOpenPremi
             </div>
           </div>
 
-          <div style={{ background: 'rgba(15, 22, 41, 0.7)', padding: '14px', borderRadius: '14px', border: '1px solid var(--glass-border)' }}>
+          <div style={{ background: 'rgba(var(--panel), 0.7)', padding: '14px', borderRadius: '14px', border: '1px solid var(--glass-border)' }}>
             <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Linea +2.5 Goles</div>
             <div style={{ fontSize: '20px', fontWeight: 800, color: 'var(--accent-green)' }}>
               {probabilitiesSecondary?.over25 ?? 'N/A'}%
@@ -300,7 +304,7 @@ export default function PredictionPanel({ predictionData, isPremium, onOpenPremi
             </div>
           </div>
 
-          <div style={{ background: 'rgba(15, 22, 41, 0.7)', padding: '14px', borderRadius: '14px', border: '1px solid var(--glass-border)' }}>
+          <div style={{ background: 'rgba(var(--panel), 0.7)', padding: '14px', borderRadius: '14px', border: '1px solid var(--glass-border)' }}>
             <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginBottom: '4px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Marcador Probable</div>
             <div style={{ fontSize: '20px', fontWeight: 800, color: 'var(--accent-gold)' }}>
               {mostLikelyScore ?? 'N/A'}
@@ -342,7 +346,7 @@ export default function PredictionPanel({ predictionData, isPremium, onOpenPremi
                 { key: 'offsides', label: 'Fueras de juego', color: '#ff5252' },
               ].map((item) => (
                 <div key={item.key} style={{
-                  background: 'rgba(255,255,255,0.03)',
+                  background: 'rgba(var(--ov), 0.03)',
                   border: '1px solid var(--glass-border)',
                   borderRadius: '10px',
                   padding: '12px',
@@ -378,7 +382,7 @@ export default function PredictionPanel({ predictionData, isPremium, onOpenPremi
                 { label: matchInfo.awayTeam.shortName, odds: marketOdds.awayWin, min: fairOdds.awayWin, prob: probabilities.awayWin },
               ].map((o, i) => (
                 <div key={i} style={{
-                  background: 'rgba(255,255,255,0.03)',
+                  background: 'rgba(var(--ov), 0.03)',
                   border: '1px solid var(--glass-border)',
                   borderRadius: '10px',
                   padding: '12px',
@@ -412,17 +416,17 @@ export default function PredictionPanel({ predictionData, isPremium, onOpenPremi
 
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))', gap: '16px' }}>
               {/* Simulation Results Bar */}
-              <div style={{ background: 'rgba(15, 22, 41, 0.7)', padding: '16px', borderRadius: '14px', border: '1px solid var(--glass-border)' }}>
+              <div style={{ background: 'rgba(var(--panel), 0.7)', padding: '16px', borderRadius: '14px', border: '1px solid var(--glass-border)' }}>
                 <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginBottom: '12px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Distribución de Resultados</div>
                 
                 <div style={{ display: 'flex', height: '24px', borderRadius: '12px', overflow: 'hidden', marginBottom: '12px', boxShadow: 'inset 0 2px 4px rgba(0,0,0,0.2)' }}>
-                  <div style={{ width: `${prediction.monteCarlo?.results?.homeWinPct ?? 0}%`, background: 'var(--accent-cyan)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: 700, color: '#000', transition: 'width 1s ease-out' }}>
+                  <div style={{ width: `${prediction.monteCarlo?.results?.homeWinPct ?? 0}%`, background: 'var(--accent-cyan)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: 700, color: 'var(--on-accent)', transition: 'width 1s ease-out' }}>
                     {(prediction.monteCarlo?.results?.homeWinPct ?? 0) > 10 ? `${prediction.monteCarlo?.results?.homeWinPct}%` : ''}
                   </div>
-                  <div style={{ width: `${prediction.monteCarlo?.results?.drawPct ?? 0}%`, background: 'var(--accent-gold)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: 700, color: '#000', transition: 'width 1s ease-out' }}>
+                  <div style={{ width: `${prediction.monteCarlo?.results?.drawPct ?? 0}%`, background: 'var(--accent-gold)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: 700, color: 'var(--on-accent)', transition: 'width 1s ease-out' }}>
                     {(prediction.monteCarlo?.results?.drawPct ?? 0) > 10 ? `${prediction.monteCarlo?.results?.drawPct}%` : ''}
                   </div>
-                  <div style={{ width: `${prediction.monteCarlo?.results?.awayWinPct ?? 0}%`, background: 'var(--accent-red)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: 700, color: '#000', transition: 'width 1s ease-out' }}>
+                  <div style={{ width: `${prediction.monteCarlo?.results?.awayWinPct ?? 0}%`, background: 'var(--accent-red)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '11px', fontWeight: 700, color: 'var(--on-accent)', transition: 'width 1s ease-out' }}>
                     {(prediction.monteCarlo?.results?.awayWinPct ?? 0) > 10 ? `${prediction.monteCarlo?.results?.awayWinPct}%` : ''}
                   </div>
                 </div>
@@ -435,11 +439,11 @@ export default function PredictionPanel({ predictionData, isPremium, onOpenPremi
               </div>
 
               {/* Top Scores */}
-              <div style={{ background: 'rgba(15, 22, 41, 0.7)', padding: '16px', borderRadius: '14px', border: '1px solid var(--glass-border)' }}>
+              <div style={{ background: 'rgba(var(--panel), 0.7)', padding: '16px', borderRadius: '14px', border: '1px solid var(--glass-border)' }}>
                 <div style={{ fontSize: '11px', color: 'var(--text-muted)', marginBottom: '12px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Marcadores Frecuentes</div>
                 <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
                   {prediction.monteCarlo?.topScores?.map((scoreObj, idx) => (
-                    <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 10px', background: 'rgba(255,255,255,0.03)', borderRadius: '8px', border: idx === 0 ? '1px solid rgba(242, 184, 75,0.3)' : '1px solid transparent' }}>
+                    <div key={idx} style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '6px 10px', background: 'rgba(var(--ov), 0.03)', borderRadius: '8px', border: idx === 0 ? '1px solid rgba(242, 184, 75,0.3)' : '1px solid transparent' }}>
                       <div style={{ fontSize: '15px', fontWeight: 800, color: idx === 0 ? 'var(--accent-gold)' : 'var(--text-primary)' }}>{scoreObj.score}</div>
                       <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>
                         <span style={{ fontWeight: 700, color: idx === 0 ? 'var(--accent-gold)' : 'inherit' }}>{scoreObj.percentage}%</span> de probabilidad

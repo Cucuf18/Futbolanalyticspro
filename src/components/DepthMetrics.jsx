@@ -8,11 +8,11 @@ function MetricBar({ label, homeValue, awayValue, homeSeason, awaySeason, colorH
   return (
     <div style={{ marginBottom: '16px' }}>
       <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: '11px', color: 'var(--text-secondary)', marginBottom: '6px' }}>
-        <span style={{ fontWeight: 700, color: '#fff' }}>{homeValue}</span>
+        <span style={{ fontWeight: 700, color: 'var(--text-primary)' }}>{homeValue}</span>
         <span>{label}</span>
-        <span style={{ fontWeight: 700, color: '#fff' }}>{awayValue}</span>
+        <span style={{ fontWeight: 700, color: 'var(--text-primary)' }}>{awayValue}</span>
       </div>
-      <div style={{ display: 'flex', height: '6px', borderRadius: '4px', overflow: 'hidden', background: 'rgba(255,255,255,0.1)' }}>
+      <div style={{ display: 'flex', height: '6px', borderRadius: '4px', overflow: 'hidden', background: 'rgba(var(--ov), 0.1)' }}>
         <div style={{ width: `${homePct}%`, background: colorHome, transition: 'width 0.5s ease' }} />
         <div style={{ width: `${awayPct}%`, background: colorAway, transition: 'width 0.5s ease' }} />
       </div>

@@ -57,7 +57,7 @@ function PickCard({ pick, matchInfo, riskLevel }) {
 
   return (
     <div style={{
-      background: `linear-gradient(135deg, ${config.gradient} 0%, rgba(255, 255, 255, 0.02) 100%)`,
+      background: `linear-gradient(135deg, ${config.gradient} 0%, rgba(var(--ov), 0.02) 100%)`,
       border: `1px solid ${config.border}`,
       borderRadius: '12px', padding: '16px', marginBottom: '12px', position: 'relative', overflow: 'hidden',
     }}>
@@ -72,7 +72,7 @@ function PickCard({ pick, matchInfo, riskLevel }) {
           {config.icon}
         </div>
         <div style={{ flex: 1, minWidth: 0 }}>
-          <div style={{ fontSize: '14px', fontWeight: 800, color: '#fff', lineHeight: 1.25 }}>
+          <div style={{ fontSize: '14px', fontWeight: 800, color: 'var(--text-primary)', lineHeight: 1.25 }}>
             {pick.label}
           </div>
           <div style={{ fontSize: '10px', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
@@ -120,7 +120,7 @@ function PickCard({ pick, matchInfo, riskLevel }) {
           <div style={{ fontSize: '9px', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
             Cuota estimada (referencia)
           </div>
-          <div style={{ fontSize: '16px', fontWeight: 800, color: '#fff' }}>@{pick.marketOdds}</div>
+          <div style={{ fontSize: '16px', fontWeight: 800, color: 'var(--text-primary)' }}>@{pick.marketOdds}</div>
         </div>
         <div style={{ background: 'rgba(0,0,0,0.25)', borderRadius: '8px', padding: '8px 10px' }}>
           <div style={{ fontSize: '9px', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.04em' }}>
@@ -139,7 +139,7 @@ function PickCard({ pick, matchInfo, riskLevel }) {
           onChange={(e) => setRealOdds(e.target.value)}
           placeholder="Cuota real de tu casa (Betano)"
           style={{
-            flex: 1, minWidth: 0, background: 'rgba(255,255,255,0.04)',
+            flex: 1, minWidth: 0, background: 'rgba(var(--ov), 0.04)',
             border: '1px solid var(--glass-border)', borderRadius: '8px',
             padding: '8px 10px', color: 'var(--text-primary)', fontSize: '12px', outline: 'none',
           }}
@@ -172,7 +172,7 @@ function PickCard({ pick, matchInfo, riskLevel }) {
       <button onClick={handleSavePick} style={{
         width: '100%', padding: '10px', borderRadius: '8px',
         background: `linear-gradient(90deg, ${config.color} 0%, ${config.color}99 100%)`,
-        color: '#000', fontSize: '13px', fontWeight: 800, border: 'none', cursor: 'pointer',
+        color: 'var(--on-accent)', fontSize: '13px', fontWeight: 800, border: 'none', cursor: 'pointer',
       }}>
         + Agregar al Boleto
       </button>
@@ -207,7 +207,7 @@ export default function MatchPicks({ matchPicks, matchInfo, dataQuality, leagueT
       <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '16px', flexWrap: 'wrap' }}>
         <div style={{
           width: '24px', height: '24px', borderRadius: '6px', background: 'var(--accent-cyan)',
-          display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#000', fontWeight: 'bold',
+          display: 'flex', alignItems: 'center', justifyContent: 'center', color: 'var(--on-accent)', fontWeight: 'bold',
         }}>
           !
         </div>
@@ -264,7 +264,7 @@ export default function MatchPicks({ matchPicks, matchInfo, dataQuality, leagueT
         </div>
       )}
 
-      <div style={{ display: 'flex', gap: '8px', marginBottom: '16px', background: 'rgba(255,255,255,0.03)', padding: '4px', borderRadius: '12px' }}>
+      <div style={{ display: 'flex', gap: '8px', marginBottom: '16px', background: 'rgba(var(--ov), 0.03)', padding: '4px', borderRadius: '12px' }}>
         {tabs.map((tab) => (
           <button
             key={tab.id}

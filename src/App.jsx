@@ -1,12 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import BasketballView from './components/BasketballView';
 import { BrowserRouter, Routes, Route, useParams, useNavigate, useLocation } from 'react-router-dom';
-import Navbar from './components/Navbar';
-import LeagueSelector from './components/LeagueSelector';
+import Sidebar from './components/Sidebar';
 import MetricsTable from './components/MetricsTable';
 import H2HViewer from './components/H2HViewer';
 import PredictionPanel from './components/PredictionPanel';
-import AdBanner from './components/AdBanner';
 import PremiumModal from './components/PremiumModal';
 import { BetSlipProvider } from './context/BetSlipContext';
 import BetSlip from './components/BetSlip';
@@ -218,6 +216,18 @@ function AppLayout() {
 
   const [isPremium, setIsPremium] = useState(false);
   const [isPremiumModalOpen, setIsPremiumModalOpen] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
+  const [theme, setTheme] = useState(() => {
+    try { return localStorage.getItem('theme') || 'light'; } catch { return 'light'; }
+  });
+
+  useEffect(() => {
+    document.documentElement.dataset.theme = theme;
+    try { localStorage.setItem('theme', theme); } catch { /* almacenamiento bloqueado */ }
+  }, [theme]);
+
+  // Al navegar en movil se cierra el menu
+  useEffect(() => { setMenuOpen(false); }, [location.pathname]);
 
   const handleSelectLeague = (id) => {
     if (location.pathname.startsWith('/predict')) {
@@ -228,26 +238,29 @@ function AppLayout() {
   };
 
   return (
-    <div style={{ minHeight: '100vh', display: 'flex', flexDirection: 'column' }}>
-      <Navbar
-        isPremium={isPremium}
-        onTogglePremium={(status) => setIsPremium(status)}
-        onOpenPremiumModal={() => setIsPremiumModalOpen(true)}
-        dataSource={'live'}
+    <div className="app">
+      <Sidebar
+        leagues={LEAGUES}
+        currentLeague={currentLeague}
+        onSelectLeague={handleSelectLeague}
+        isFull={isPremium}
+        onToggleFull={setIsPremium}
+        theme={theme}
+        onSetTheme={setTheme}
+        open={menuOpen}
       />
+      <div className={`scrim${menuOpen ? ' show' : ''}`} onClick={() => setMenuOpen(false)} />
 
-      <main className="app-shell" style={{ flex: 1 }}>
-        <div style={{ marginBottom: '20px' }}>
-          <LeagueSelector
-            leagues={LEAGUES}
-            selectedLeague={currentLeague}
-            onSelectLeague={handleSelectLeague}
-          />
+      <div style={{ minWidth: 0 }}>
+        <div className="mobile-bar">
+          <button className="burger" onClick={() => setMenuOpen(true)} aria-label="Abrir menú">
+            <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round"><path d="M4 7h16M4 12h16M4 17h16" /></svg>
+          </button>
+          <div className="brand-mark">FA</div>
+          <strong style={{ fontFamily: 'var(--font-heading)', fontSize: '16px' }}>FutbolAnalytics</strong>
         </div>
 
-        {!isPremium && <AdBanner slotId="top-header-ad" />}
-
-        <div style={{ marginTop: '24px' }}>
+        <main className="main">
           <Routes>
             <Route path="/" element={<StandingsView />} />
             <Route path="/standings" element={<StandingsView />} />
@@ -258,14 +271,12 @@ function AppLayout() {
             <Route path="/combinadas" element={<CombinadasView />} />
             <Route path="/baloncesto" element={<BasketballView />} />
           </Routes>
-        </div>
 
-        {!isPremium && <AdBanner slotId="bottom-content-ad" />}
-      </main>
-
-      <footer style={{ borderTop: '1px solid var(--glass-border)', padding: '20px', textAlign: 'center', fontSize: '12px', color: 'var(--text-muted)' }}>
-        <p>FutbolAnalytics Pro — Plataforma de Estadísticas y Modelado Predictivo</p>
-      </footer>
+          <footer className="main-foot">
+            FutbolAnalytics — estadísticas y comparación con el mercado. No es asesoría de apuestas: el juego implica riesgo de pérdida y es solo para mayores de 18 años.
+          </footer>
+        </main>
+      </div>
 
       <PremiumModal
         isOpen={isPremiumModalOpen}

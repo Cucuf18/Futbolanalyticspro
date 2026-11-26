@@ -10,8 +10,8 @@ export default function AdBanner({ slotId = 'default-slot' }) {
       width: '100%',
       margin: '16px 0',
       padding: '12px 16px',
-      background: 'rgba(15, 22, 41, 0.4)',
-      border: '1px solid rgba(255, 255, 255, 0.05)',
+      background: 'rgba(var(--panel), 0.4)',
+      border: '1px solid rgba(var(--ov), 0.05)',
       borderRadius: '12px',
       display: 'flex',
       alignItems: 'center',
@@ -27,7 +27,7 @@ export default function AdBanner({ slotId = 'default-slot' }) {
       }} />
 
       <div style={{ display: 'flex', alignItems: 'center', gap: '14px', flex: 1 }}>
-        <span style={{ fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-muted)', border: '1px solid rgba(255,255,255,0.1)', padding: '2px 6px', borderRadius: '4px' }}>
+        <span style={{ fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-muted)', border: '1px solid rgba(var(--ov), 0.1)', padding: '2px 6px', borderRadius: '4px' }}>
           AD
         </span>
         <div style={{ fontSize: '12px', color: 'var(--text-secondary)' }}>

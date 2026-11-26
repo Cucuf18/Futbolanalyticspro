@@ -300,3 +300,17 @@ Libro de apuestas guardado en el servidor (Postgres). Mide si ganas **dinero** c
 ## 📒 Apuestas manuales y CLV
 
 En *Rendimiento → Mis apuestas reales* se puede registrar una apuesta de cualquier deporte (monto, cuota, y opcionalmente la cuota de cierre). El **CLV** (cuota conseguida / cuota de cierre − 1) es la señal más rápida de si se toman buenas decisiones: converge mucho antes que el yield.
+
+
+## 🆚 Mercado vs modelo (fútbol)
+
+En el predictor, cada partido muestra al lado de las probabilidades del modelo las **cuotas reales del mercado** (Pinnacle como referencia; el promedio si falta), de `fixtures.csv` de football-data.co.uk (gratis, sin clave). Incluye más/menos 2.5 goles y el árbitro cuando lo traen.
+
+- Las cuotas se recogen los viernes por la tarde (fin de semana) y los martes (entre semana): **no son en tiempo real**, y solo hay partidos de la semana.
+- La unión con nuestros partidos es por nombre de equipo y es **estricta**: si no hay una coincidencia clara no se muestra nada, antes que mostrar las cuotas de otro partido.
+- Cubre PL, La Liga, Serie A, Bundesliga, Ligue 1, Eredivisie, Primeira y Championship. No cubre Brasileirão ni Champions.
+- Una discrepancia de más de 5 puntos se marca con cautela: en el backtest (docs/BACKTEST_MERCADO.md) esas diferencias fueron error del modelo.
+
+## 🎨 Diseño
+
+Barra lateral de navegación (ligas agrupadas bajo Fútbol, Baloncesto, Mi banca), tema **claro** por defecto y **oscuro** opcional (se guarda en el navegador). Los colores significan algo: azul = modelo, ámbar = mercado, verde = favorable, rojo = aviso. El toggle "Vista completa" reemplaza al antiguo Gratuito/Premium y los espacios publicitarios vacíos se quitaron.

@@ -53,7 +53,7 @@ export default function MetricsTable({ standings, homeTeamId, awayTeamId, onSele
                 <tr
                   key={team.id}
                   style={{
-                    borderBottom: '1px solid rgba(255, 255, 255, 0.04)',
+                    borderBottom: '1px solid rgba(var(--ov), 0.04)',
                     background: isHome ? 'rgba(108, 196, 240, 0.08)' : isAway ? 'rgba(255, 101, 132, 0.08)' : 'transparent',
                     transition: 'var(--transition-fast)',
                   }}

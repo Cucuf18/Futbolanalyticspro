@@ -7,7 +7,7 @@ function ProbBar({ label, value, color }) {
   return (
     <div style={{ display: 'grid', gridTemplateColumns: '64px 1fr 40px', alignItems: 'center', gap: '8px', fontSize: '12px' }}>
       <span style={{ color: 'var(--text-muted)' }}>{label}</span>
-      <div style={{ height: '8px', borderRadius: '99px', background: 'rgba(255,255,255,0.06)', overflow: 'hidden' }}>
+      <div style={{ height: '8px', borderRadius: '99px', background: 'rgba(var(--ov), 0.06)', overflow: 'hidden' }}>
         <div style={{ width: `${w}%`, height: '100%', background: color, borderRadius: '99px' }} />
       </div>
       <span className="num" style={{ textAlign: 'right', fontWeight: 700 }}>{pct(value)}</span>
@@ -85,7 +85,7 @@ function GameCard({ g }) {
 function Report({ r }) {
   if (!r) return null;
   const cell = (label, value, hint) => (
-    <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid var(--glass-border)', borderRadius: '12px', padding: '12px', textAlign: 'center' }}>
+    <div style={{ background: 'rgba(var(--ov), 0.03)', border: '1px solid var(--glass-border)', borderRadius: '12px', padding: '12px', textAlign: 'center' }}>
       <div style={{ fontSize: '10.5px', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{label}</div>
       <div className="num" style={{ fontSize: '20px', fontWeight: 800, marginTop: '4px' }}>{value}</div>
       {hint && <div style={{ fontSize: '10.5px', color: 'var(--text-secondary)', marginTop: '2px' }}>{hint}</div>}
@@ -123,6 +123,30 @@ function Report({ r }) {
   );
 }
 
+function FinishedList({ list }) {
+  if (list.length === 0) return null;
+  return (
+    <section style={{ marginBottom: '26px' }}>
+      <h3 className="eyebrow">Resultados recientes</h3>
+      <div className="glass-card" style={{ padding: '4px 18px' }}>
+        {list.map((g, i) => {
+          const homeWon = g.home.score > g.away.score;
+          return (
+            <div key={g.id} style={{ display: 'grid', gridTemplateColumns: '1fr auto', gap: '12px', alignItems: 'center', padding: '12px 0', borderTop: i ? '1px solid var(--glass-border)' : 'none' }}>
+              <div style={{ fontSize: '14px' }}>
+                <span style={{ fontWeight: homeWon ? 500 : 800 }}>{g.away.name}</span>
+                <span style={{ color: 'var(--text-muted)' }}> @ </span>
+                <span style={{ fontWeight: homeWon ? 800 : 500 }}>{g.home.name}</span>
+              </div>
+              <div className="num" style={{ fontWeight: 700, fontSize: '14px' }}>{g.away.score} – {g.home.score}</div>
+            </div>
+          );
+        })}
+      </div>
+    </section>
+  );
+}
+
 export default function BasketballView() {
   const [games, setGames] = useState(null);
   const [report, setReport] = useState(null);
@@ -142,45 +166,54 @@ export default function BasketballView() {
     return () => { alive = false; };
   }, []);
 
-  // Agrupar por dia local
+  const live = (games || []).filter((g) => g.state === 'in');
+  const upcoming = (games || []).filter((g) => g.state === 'pre');
+  const finished = (games || []).filter((g) => g.state === 'post').sort((a, b) => new Date(b.date) - new Date(a.date));
+
   const byDay = {};
-  for (const g of games || []) {
+  for (const g of upcoming) {
     const k = new Date(g.date).toLocaleDateString('es-PE', { weekday: 'long', day: 'numeric', month: 'long' });
     (byDay[k] = byDay[k] || []).push(g);
   }
+  const grid = { display: 'grid', gap: '14px', gridTemplateColumns: 'repeat(auto-fill, minmax(min(100%, 420px), 1fr))' };
 
   return (
-    <div className="animate-fade-in" style={{ maxWidth: '1100px', margin: '0 auto', padding: '8px 0 40px' }}>
-      <div style={{ marginBottom: '18px' }}>
-        <h2 style={{ fontSize: '28px', fontWeight: 800 }}>Baloncesto · NBA</h2>
-        <p style={{ fontSize: '13px', color: 'var(--text-secondary)', marginTop: '4px' }}>
-          Próximos partidos con la línea del mercado y un modelo simple al lado, para comparar.
-        </p>
+    <div className="animate-fade-in">
+      <header className="page-head">
+        <div className="eyebrow" style={{ margin: 0 }}>Baloncesto</div>
+        <h1>NBA</h1>
+        <p>Próximos partidos con la línea del mercado y un modelo simple al lado, para compararlos.</p>
+      </header>
+
+      <div className="notice" style={{ marginBottom: '26px' }}>
+        <strong>Esto no es una recomendación de apuesta.</strong> El modelo usa solo puntos a favor y en contra (no conoce lesiones, descanso ni
+        viajes) y no hay evidencia de que mejore la línea de las casas. En fútbol, un modelo parecido perdió frente al mercado: aquí se está
+        midiendo, y abajo verás el resultado real. Datos de ESPN (fuente no oficial, puede fallar).
       </div>
 
-      <div style={{ padding: '12px 14px', borderRadius: '12px', border: '1px solid rgba(245,184,61,0.3)', background: 'rgba(245,184,61,0.07)', fontSize: '12.5px', lineHeight: 1.6, color: 'var(--text-secondary)', marginBottom: '20px' }}>
-        <strong style={{ color: 'var(--text-primary)' }}>Esto no es una recomendación de apuesta.</strong> El modelo usa solo puntos a favor y en contra
-        (no conoce lesiones, descanso ni viajes) y todavía no hay evidencia de que mejore a la línea de las casas. En fútbol, un modelo parecido
-        perdió frente al mercado. Aquí se está midiendo, y abajo verás el resultado real. Datos de ESPN (fuente no oficial, puede fallar).
-      </div>
-
-      {error && (
-        <div className="glass-card" style={{ padding: '20px', color: 'var(--accent-red)', fontSize: '13.5px' }}>{error}</div>
-      )}
+      {error && <div className="glass-card" style={{ padding: '20px', color: 'var(--accent-red)', fontSize: '14px' }}>{error}</div>}
       {!error && games === null && <div style={{ color: 'var(--text-muted)' }}>Cargando partidos...</div>}
-      {games && games.length === 0 && (
-        <div className="glass-card" style={{ padding: '20px', color: 'var(--text-muted)', fontSize: '13.5px' }}>No hay partidos en los próximos días.</div>
+
+      {live.length > 0 && (
+        <section style={{ marginBottom: '26px' }}>
+          <h3 className="eyebrow">En juego</h3>
+          <div style={grid}>{live.map((g) => <GameCard key={g.id} g={g} />)}</div>
+        </section>
       )}
 
+      {games && upcoming.length === 0 && (
+        <div className="glass-card" style={{ padding: '20px', color: 'var(--text-muted)', fontSize: '14px', marginBottom: '26px' }}>
+          No hay partidos programados en los próximos días.
+        </div>
+      )}
       {Object.entries(byDay).map(([day, list]) => (
-        <section key={day} style={{ marginBottom: '22px' }}>
-          <h3 style={{ fontSize: '13px', textTransform: 'uppercase', letterSpacing: '0.08em', color: 'var(--text-muted)', margin: '0 0 10px' }}>{day}</h3>
-          <div style={{ display: 'grid', gap: '12px', gridTemplateColumns: 'repeat(auto-fill, minmax(420px, 1fr))' }}>
-            {list.map((g) => <GameCard key={g.id} g={g} />)}
-          </div>
+        <section key={day} style={{ marginBottom: '26px' }}>
+          <h3 className="eyebrow" style={{ textTransform: 'capitalize' }}>{day}</h3>
+          <div style={grid}>{list.map((g) => <GameCard key={g.id} g={g} />)}</div>
         </section>
       ))}
 
+      <FinishedList list={finished} />
       <Report r={report} />
     </div>
   );

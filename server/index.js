@@ -12,6 +12,7 @@ import { getTeamStats } from './services/externalDataAggregator.js';
 import { initPersistence, usingDatabase } from './services/persistence.js';
 import { runAutoRegister } from './services/autoRegister.js';
 import { betsRouter, diagRouter } from './betsRoutes.js';
+import { getMarketFor } from './services/marketOdds.js';
 import { settleBets } from './services/bets.js';
 import { getUpcoming, recordGames, getBasketballReport, autoRun as basketballAutoRun } from './services/basketball.js';
 
@@ -160,6 +161,17 @@ app.get('/api/weights', (req, res) => {
     res.json({ success: true, weights: currentWeights });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+// Cuotas reales del mercado para un partido de futbol (football-data.co.uk, sin clave).
+app.get('/api/market', async (req, res) => {
+  const { league, home, away } = req.query;
+  if (!league || !home || !away) return res.status(400).json({ success: false, error: 'Faltan league, home o away.' });
+  try {
+    res.json({ success: true, ...(await getMarketFor(String(league), String(home), String(away))) });
+  } catch (err) {
+    res.status(502).json({ success: false, error: `No se pudieron leer las cuotas (${err.message}).` });
   }
 });
 

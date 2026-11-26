@@ -66,7 +66,7 @@ export default function HistoryTracker() {
 
           <div className="glass-card" style={{ padding: '24px', textAlign: 'center', background: 'linear-gradient(135deg, rgba(108, 196, 240,0.05) 0%, rgba(154, 134, 240,0.05) 100%)', border: '1px solid var(--accent-cyan)' }}>
             <div style={{ fontSize: '12px', color: 'var(--accent-cyan)', textTransform: 'uppercase', letterSpacing: '0.05em', fontWeight: 700 }}>Hit Rate (Tasa de Acierto)</div>
-            <div style={{ fontSize: '36px', fontWeight: 800, color: '#fff', marginTop: '4px' }}>{hitRate}%</div>
+            <div style={{ fontSize: '36px', fontWeight: 800, color: 'var(--text-primary)', marginTop: '4px' }}>{hitRate}%</div>
           </div>
         </div>
 
@@ -89,7 +89,7 @@ export default function HistoryTracker() {
                 <div key={idx} style={{
                   display: 'flex', justifyContent: 'space-between', alignItems: 'center',
                   padding: '16px', borderRadius: '12px',
-                  background: 'rgba(255,255,255,0.02)',
+                  background: 'rgba(var(--ov), 0.02)',
                   borderLeft: `4px solid ${bet.status === 'WON' ? 'var(--accent-green)' : 'var(--accent-red)'}`
                 }}>
                   <div>

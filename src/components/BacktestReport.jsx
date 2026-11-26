@@ -13,7 +13,7 @@ import React, { useState, useEffect } from 'react';
  */
 
 const card = {
-  background: 'rgba(255,255,255,0.02)',
+  background: 'rgba(var(--ov), 0.02)',
   border: '1px solid var(--glass-border)',
   borderRadius: '12px',
   padding: '16px',
@@ -138,7 +138,7 @@ export default function BacktestReport() {
       {r.partidosResueltos === 0 ? (
         <div style={{
           marginTop: '16px', padding: '16px', borderRadius: '10px',
-          background: 'rgba(255,255,255,0.02)', border: '1px dashed var(--glass-border)',
+          background: 'rgba(var(--ov), 0.02)', border: '1px dashed var(--glass-border)',
           fontSize: '13px', color: 'var(--text-secondary)', lineHeight: 1.6,
         }}>
           Todavia no hay partidos resueltos. Hay <strong>{r.prediccionesGuardadas}</strong> predicciones

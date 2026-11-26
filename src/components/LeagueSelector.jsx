@@ -16,7 +16,7 @@ export default function LeagueSelector({ leagues, selectedLeague, onSelectLeague
               fontSize: '13px',
               fontWeight: isSelected ? 700 : 500,
               whiteSpace: 'nowrap',
-              background: isSelected ? 'linear-gradient(135deg, rgba(108, 196, 240, 0.2) 0%, rgba(110, 155, 245, 0.2) 100%)' : 'rgba(15, 22, 41, 0.6)',
+              background: isSelected ? 'linear-gradient(135deg, rgba(108, 196, 240, 0.2) 0%, rgba(110, 155, 245, 0.2) 100%)' : 'rgba(var(--panel), 0.6)',
               color: isSelected ? 'var(--accent-cyan)' : 'var(--text-secondary)',
               border: isSelected ? '1px solid rgba(108, 196, 240, 0.4)' : '1px solid var(--glass-border)',
               boxShadow: isSelected ? '0 4px 12px rgba(108, 196, 240, 0.15)' : 'none',

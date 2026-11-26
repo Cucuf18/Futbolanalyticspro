@@ -26,7 +26,7 @@ export default function H2HViewer({ h2hData }) {
 
       {/* Matchup Header Card */}
       <div style={{
-        background: 'rgba(15, 22, 41, 0.8)',
+        background: 'rgba(var(--panel), 0.8)',
         borderRadius: '16px',
         padding: '16px',
         border: '1px solid var(--glass-border)',
@@ -57,7 +57,7 @@ export default function H2HViewer({ h2hData }) {
 
         {/* Distribution Bar */}
         <div style={{ marginTop: '16px' }}>
-          <div style={{ display: 'flex', height: '10px', borderRadius: '5px', overflow: 'hidden', background: 'rgba(255,255,255,0.05)' }}>
+          <div style={{ display: 'flex', height: '10px', borderRadius: '5px', overflow: 'hidden', background: 'rgba(var(--ov), 0.05)' }}>
             <div style={{ width: `${summary.homeWinPct}%`, background: 'var(--accent-cyan)', transition: 'width 0.5s ease' }} title={`Local: ${summary.homeWinPct}%`} />
             <div style={{ width: `${summary.drawPct}%`, background: 'var(--accent-gold)', transition: 'width 0.5s ease' }} title={`Empate: ${summary.drawPct}%`} />
             <div style={{ width: `${summary.awayWinPct}%`, background: 'var(--accent-red)', transition: 'width 0.5s ease' }} title={`Visitante: ${summary.awayWinPct}%`} />
@@ -85,8 +85,8 @@ export default function H2HViewer({ h2hData }) {
               justifyContent: 'space-between',
               padding: '10px 14px',
               borderRadius: '10px',
-              background: 'rgba(15, 22, 41, 0.5)',
-              border: '1px solid rgba(255,255,255,0.04)',
+              background: 'rgba(var(--panel), 0.5)',
+              border: '1px solid rgba(var(--ov), 0.04)',
               fontSize: '13px',
             }}
           >

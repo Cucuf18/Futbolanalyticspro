@@ -97,7 +97,7 @@ export default function Navbar({ isPremium, onTogglePremium, onOpenPremiumModal,
           <div style={{
             display: 'flex',
             alignItems: 'center',
-            background: 'rgba(15, 22, 41, 0.9)',
+            background: 'rgba(var(--panel), 0.9)',
             border: '1px solid var(--glass-border)',
             borderRadius: '20px',
             padding: '3px 4px',
@@ -109,7 +109,7 @@ export default function Navbar({ isPremium, onTogglePremium, onOpenPremiumModal,
                 borderRadius: '16px',
                 fontSize: '12px',
                 fontWeight: 600,
-                background: !isPremium ? 'rgba(255, 255, 255, 0.1)' : 'transparent',
+                background: !isPremium ? 'rgba(var(--ov), 0.1)' : 'transparent',
                 color: !isPremium ? 'var(--text-primary)' : 'var(--text-muted)',
               }}
             >

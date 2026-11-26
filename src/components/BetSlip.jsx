@@ -45,7 +45,7 @@ export default function BetSlip() {
     return (
       <div style={{
         position: 'fixed', bottom: '20px', right: '20px', zIndex: 1000, maxWidth: 'min(320px, calc(100vw - 40px))',
-        background: 'rgba(15, 22, 41, 0.95)', border: `1px solid ${msg.ok ? 'var(--accent-green)' : 'var(--accent-red)'}`,
+        background: 'rgba(var(--panel), 0.95)', border: `1px solid ${msg.ok ? 'var(--accent-green)' : 'var(--accent-red)'}`,
         borderRadius: '12px', padding: '12px 14px', fontSize: '12px', lineHeight: 1.45,
         color: msg.ok ? 'var(--accent-green)' : 'var(--accent-red)', display: 'flex', gap: '10px', alignItems: 'flex-start',
       }}>
@@ -110,7 +110,7 @@ export default function BetSlip() {
           display: 'flex',
           alignItems: 'center',
           gap: '10px',
-          background: 'rgba(15, 22, 41, 0.95)',
+          background: 'rgba(var(--panel), 0.95)',
           backdropFilter: 'blur(10px)',
           WebkitBackdropFilter: 'blur(10px)',
           border: '1px solid var(--accent-gold)',
@@ -131,7 +131,7 @@ export default function BetSlip() {
           height: '20px',
           borderRadius: '999px',
           background: 'var(--accent-gold)',
-          color: '#000',
+          color: 'var(--on-accent)',
           fontSize: '11px',
           fontWeight: 900,
           padding: '0 6px',
@@ -151,7 +151,7 @@ export default function BetSlip() {
       bottom: '20px',
       right: '20px',
       width: 'min(320px, calc(100vw - 40px))',
-      background: 'rgba(15, 22, 41, 0.95)',
+      background: 'rgba(var(--panel), 0.95)',
       backdropFilter: 'blur(10px)',
       WebkitBackdropFilter: 'blur(10px)',
       border: '1px solid var(--accent-gold)',
@@ -181,7 +181,7 @@ export default function BetSlip() {
               justifyContent: 'center',
               width: '24px',
               height: '24px',
-              background: 'rgba(255, 255, 255, 0.06)',
+              background: 'rgba(var(--ov), 0.06)',
               border: '1px solid var(--glass-border)',
               borderRadius: '6px',
               color: 'var(--text-primary)',
@@ -198,7 +198,7 @@ export default function BetSlip() {
       <div style={{ maxHeight: '300px', overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: '8px' }}>
         {slip.map((pick) => (
           <div key={pick.matchId} style={{
-            background: 'rgba(255, 255, 255, 0.05)',
+            background: 'rgba(var(--ov), 0.05)',
             borderRadius: '8px',
             padding: '10px',
             position: 'relative',
@@ -249,12 +249,12 @@ export default function BetSlip() {
           <input
             inputMode="decimal" value={stake} onChange={(e) => setStake(e.target.value)}
             placeholder="Monto S/"
-            style={{ flex: 1, minWidth: 0, background: 'rgba(255,255,255,0.06)', border: '1px solid var(--glass-border)', borderRadius: '8px', color: 'var(--text-primary)', padding: '7px 8px', fontSize: '12px' }}
+            style={{ flex: 1, minWidth: 0, background: 'rgba(var(--ov), 0.06)', border: '1px solid var(--glass-border)', borderRadius: '8px', color: 'var(--text-primary)', padding: '7px 8px', fontSize: '12px' }}
           />
           <input
             inputMode="decimal" value={totalOdds} onChange={(e) => setTotalOdds(e.target.value)}
             placeholder="Cuota total"
-            style={{ flex: 1, minWidth: 0, background: 'rgba(255,255,255,0.06)', border: '1px solid var(--glass-border)', borderRadius: '8px', color: 'var(--text-primary)', padding: '7px 8px', fontSize: '12px' }}
+            style={{ flex: 1, minWidth: 0, background: 'rgba(var(--ov), 0.06)', border: '1px solid var(--glass-border)', borderRadius: '8px', color: 'var(--text-primary)', padding: '7px 8px', fontSize: '12px' }}
           />
         </div>
         <div style={{ fontSize: '10px', color: 'var(--text-muted)', margin: '4px 0 6px', lineHeight: 1.4 }}>

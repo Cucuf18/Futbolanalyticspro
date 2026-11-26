@@ -110,7 +110,7 @@ export default function CombinadasView() {
                 <div
                   key={pick.matchId}
                   style={{
-                    background: 'rgba(255, 255, 255, 0.03)',
+                    background: 'rgba(var(--ov), 0.03)',
                     border: '1.5px solid var(--glass-border)',
                     borderRadius: '14px',
                     padding: '20px',
@@ -158,7 +158,7 @@ export default function CombinadasView() {
                   <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', flexWrap: 'wrap', gap: '12px' }}>
                     <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
                       <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
-                        Confianza: <strong style={{ color: '#fff' }}>{pick.probability}%</strong>
+                        Confianza: <strong style={{ color: 'var(--text-primary)' }}>{pick.probability}%</strong>
                       </span>
                       <span style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
                         Cuota: <strong style={{ color: 'var(--accent-green)' }}>@{pick.odds}</strong>
@@ -217,37 +217,37 @@ export default function CombinadasView() {
 
             {modelWeights ? (
               <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(140px, 1fr))', gap: '12px' }}>
-                <div style={{ background: 'rgba(255,255,255,0.02)', padding: '12px', borderRadius: '10px', border: '1px solid var(--glass-border)' }}>
+                <div style={{ background: 'rgba(var(--ov), 0.02)', padding: '12px', borderRadius: '10px', border: '1px solid var(--glass-border)' }}>
                   <div style={{ fontSize: '10px', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Ventaja Local</div>
                   <div style={{ fontSize: '18px', fontWeight: 800, color: 'var(--accent-gold)', marginTop: '4px' }}>
                     {modelWeights.homeAdvantage?.toFixed(3)}
                   </div>
                 </div>
-                <div style={{ background: 'rgba(255,255,255,0.02)', padding: '12px', borderRadius: '10px', border: '1px solid var(--glass-border)' }}>
+                <div style={{ background: 'rgba(var(--ov), 0.02)', padding: '12px', borderRadius: '10px', border: '1px solid var(--glass-border)' }}>
                   <div style={{ fontSize: '10px', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Fuerza Ataque Local</div>
                   <div style={{ fontSize: '18px', fontWeight: 800, color: 'var(--accent-gold)', marginTop: '4px' }}>
                     {modelWeights.homeAttackMultiplier?.toFixed(3)}
                   </div>
                 </div>
-                <div style={{ background: 'rgba(255,255,255,0.02)', padding: '12px', borderRadius: '10px', border: '1px solid var(--glass-border)' }}>
+                <div style={{ background: 'rgba(var(--ov), 0.02)', padding: '12px', borderRadius: '10px', border: '1px solid var(--glass-border)' }}>
                   <div style={{ fontSize: '10px', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Fuerza Ataque Vis.</div>
                   <div style={{ fontSize: '18px', fontWeight: 800, color: 'var(--accent-gold)', marginTop: '4px' }}>
                     {modelWeights.awayAttackMultiplier?.toFixed(3)}
                   </div>
                 </div>
-                <div style={{ background: 'rgba(255,255,255,0.02)', padding: '12px', borderRadius: '10px', border: '1px solid var(--glass-border)' }}>
+                <div style={{ background: 'rgba(var(--ov), 0.02)', padding: '12px', borderRadius: '10px', border: '1px solid var(--glass-border)' }}>
                   <div style={{ fontSize: '10px', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Base H2H</div>
                   <div style={{ fontSize: '18px', fontWeight: 800, color: 'var(--accent-gold)', marginTop: '4px' }}>
                     {modelWeights.h2hBaseWeight?.toFixed(3)}
                   </div>
                 </div>
-                <div style={{ background: 'rgba(255,255,255,0.02)', padding: '12px', borderRadius: '10px', border: '1px solid var(--glass-border)' }}>
+                <div style={{ background: 'rgba(var(--ov), 0.02)', padding: '12px', borderRadius: '10px', border: '1px solid var(--glass-border)' }}>
                   <div style={{ fontSize: '10px', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Umbral Seguro</div>
                   <div style={{ fontSize: '18px', fontWeight: 800, color: 'var(--accent-green)', marginTop: '4px' }}>
                     {Math.round(modelWeights.safeThreshold ?? 70)}%
                   </div>
                 </div>
-                <div style={{ background: 'rgba(255,255,255,0.02)', padding: '12px', borderRadius: '10px', border: '1px solid var(--glass-border)' }}>
+                <div style={{ background: 'rgba(var(--ov), 0.02)', padding: '12px', borderRadius: '10px', border: '1px solid var(--glass-border)' }}>
                   <div style={{ fontSize: '10px', color: 'var(--text-muted)', textTransform: 'uppercase' }}>Umbral Medio</div>
                   <div style={{ fontSize: '18px', fontWeight: 800, color: 'var(--accent-gold)', marginTop: '4px' }}>
                     {Math.round(modelWeights.mediumThreshold ?? 58)}%
@@ -283,11 +283,11 @@ export default function CombinadasView() {
                     <div key={m.market} style={{
                       display: 'flex', alignItems: 'center', gap: '12px',
                       padding: '10px 14px', borderRadius: '10px',
-                      background: 'rgba(255,255,255,0.02)',
+                      background: 'rgba(var(--ov), 0.02)',
                       border: '1px solid var(--glass-border)',
                     }}>
                       <div style={{ fontSize: '12px', fontWeight: 800, minWidth: '90px' }}>{m.market}</div>
-                      <div style={{ flex: 1, height: '6px', background: 'rgba(255,255,255,0.06)', borderRadius: '3px', overflow: 'hidden' }}>
+                      <div style={{ flex: 1, height: '6px', background: 'rgba(var(--ov), 0.06)', borderRadius: '3px', overflow: 'hidden' }}>
                         <div style={{ width: m.hitRate + '%', height: '100%', background: color }} />
                       </div>
                       <div style={{ fontSize: '12px', fontWeight: 800, color, minWidth: '48px', textAlign: 'right' }}>
@@ -326,15 +326,15 @@ export default function CombinadasView() {
 
             {/* Micro Stats Row */}
             <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '12px', marginBottom: '24px' }}>
-              <div style={{ background: 'rgba(255,255,255,0.02)', padding: '12px', borderRadius: '10px', textAlign: 'center' }}>
+              <div style={{ background: 'rgba(var(--ov), 0.02)', padding: '12px', borderRadius: '10px', textAlign: 'center' }}>
                 <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Muestra</div>
                 <div style={{ fontSize: '20px', fontWeight: 800, marginTop: '4px' }}>{totalBets}</div>
               </div>
-              <div style={{ background: 'rgba(255,255,255,0.02)', padding: '12px', borderRadius: '10px', textAlign: 'center', borderBottom: '2.5px solid var(--accent-green)' }}>
+              <div style={{ background: 'rgba(var(--ov), 0.02)', padding: '12px', borderRadius: '10px', textAlign: 'center', borderBottom: '2.5px solid var(--accent-green)' }}>
                 <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Aciertos</div>
                 <div style={{ fontSize: '20px', fontWeight: 800, color: 'var(--accent-green)', marginTop: '4px' }}>{wonBets}</div>
               </div>
-              <div style={{ background: 'rgba(255,255,255,0.02)', padding: '12px', borderRadius: '10px', textAlign: 'center', borderBottom: '2.5px solid var(--accent-red)' }}>
+              <div style={{ background: 'rgba(var(--ov), 0.02)', padding: '12px', borderRadius: '10px', textAlign: 'center', borderBottom: '2.5px solid var(--accent-red)' }}>
                 <div style={{ fontSize: '11px', color: 'var(--text-muted)' }}>Fallos</div>
                 <div style={{ fontSize: '20px', fontWeight: 800, color: 'var(--accent-red)', marginTop: '4px' }}>{lostBets}</div>
               </div>
@@ -352,7 +352,7 @@ export default function CombinadasView() {
               <div style={{ fontSize: '12px', color: 'var(--accent-cyan)', fontWeight: 700, textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                 Tasa de Acierto (Hit Rate)
               </div>
-              <div style={{ fontSize: '32px', fontWeight: 900, color: '#fff', marginTop: '6px' }}>
+              <div style={{ fontSize: '32px', fontWeight: 900, color: 'var(--text-primary)', marginTop: '6px' }}>
                 {hitRate}%
               </div>
             </div>
@@ -373,7 +373,7 @@ export default function CombinadasView() {
                       alignItems: 'center',
                       padding: '12px 16px',
                       borderRadius: '10px',
-                      background: 'rgba(255,255,255,0.01)',
+                      background: 'rgba(var(--ov), 0.01)',
                       borderLeft: `4px solid ${bet.status === 'WON' ? 'var(--accent-green)' : 'var(--accent-red)'}`
                     }}
                   >

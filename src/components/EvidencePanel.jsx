@@ -23,7 +23,7 @@ function FormBadges({ form }) {
 function TeamRow({ label, name, history, elo, eloMatches }) {
   return (
     <div style={{
-      background: 'rgba(255,255,255,0.02)',
+      background: 'rgba(var(--ov), 0.02)',
       border: '1px solid var(--glass-border)',
       borderRadius: '10px',
       padding: '12px 14px',

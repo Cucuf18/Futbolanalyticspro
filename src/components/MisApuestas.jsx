@@ -14,7 +14,7 @@ const STATUS = {
 
 function Stat({ label, value, hint, color }) {
   return (
-    <div style={{ background: 'rgba(255,255,255,0.03)', border: '1px solid var(--glass-border)', borderRadius: '12px', padding: '14px', textAlign: 'center' }}>
+    <div style={{ background: 'rgba(var(--ov), 0.03)', border: '1px solid var(--glass-border)', borderRadius: '12px', padding: '14px', textAlign: 'center' }}>
       <div style={{ fontSize: '11px', color: 'var(--text-muted)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>{label}</div>
       <div style={{ fontSize: '22px', fontWeight: 800, marginTop: '6px', color: color || 'var(--text-primary)' }}>{value}</div>
       {hint && <div style={{ fontSize: '10.5px', color: 'var(--text-secondary)', marginTop: '3px' }}>{hint}</div>}
@@ -85,7 +85,7 @@ export default function MisApuestas() {
           <input
             type="password" value={tokenInput} onChange={(e) => setTokenInput(e.target.value)}
             placeholder="Tu clave"
-            style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid var(--glass-border)', borderRadius: '8px', color: 'var(--text-primary)', padding: '8px 10px', fontSize: '13px', minWidth: '220px' }}
+            style={{ background: 'rgba(var(--ov), 0.06)', border: '1px solid var(--glass-border)', borderRadius: '8px', color: 'var(--text-primary)', padding: '8px 10px', fontSize: '13px', minWidth: '220px' }}
           />
           <button
             onClick={() => { if (tokenInput.trim()) { setToken(tokenInput.trim()); setAuthed(true); setTokenInput(''); } }}
@@ -154,7 +154,7 @@ export default function MisApuestas() {
             <input
               inputMode="decimal" value={bankroll} onChange={(e) => setBankroll(e.target.value)}
               placeholder={String(data.settings?.initialBankroll ?? 0)}
-              style={{ width: '110px', background: 'rgba(255,255,255,0.06)', border: '1px solid var(--glass-border)', borderRadius: '8px', color: 'var(--text-primary)', padding: '6px 8px', fontSize: '12px' }}
+              style={{ width: '110px', background: 'rgba(var(--ov), 0.06)', border: '1px solid var(--glass-border)', borderRadius: '8px', color: 'var(--text-primary)', padding: '6px 8px', fontSize: '12px' }}
             />
             <button
               onClick={() => { const v = parseFloat(bankroll.replace(',', '.')); if (Number.isFinite(v)) { run(() => betsApi.setBankroll(v)); setBankroll(''); } }}
@@ -216,11 +216,11 @@ export default function MisApuestas() {
           {showManual ? 'Cerrar formulario' : '+ Registrar apuesta manual (cualquier deporte)'}
         </button>
         {showManual && (
-          <div style={{ marginTop: '10px', padding: '14px', borderRadius: '12px', background: 'rgba(255,255,255,0.03)', border: '1px solid var(--glass-border)', display: 'grid', gap: '8px' }}>
+          <div style={{ marginTop: '10px', padding: '14px', borderRadius: '12px', background: 'rgba(var(--ov), 0.03)', border: '1px solid var(--glass-border)', display: 'grid', gap: '8px' }}>
             <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
               <select
                 value={manual.sport} onChange={(e) => setManual({ ...manual, sport: e.target.value })}
-                style={{ background: 'rgba(255,255,255,0.06)', border: '1px solid var(--glass-border)', borderRadius: '8px', color: 'var(--text-primary)', padding: '8px', fontSize: '12px' }}
+                style={{ background: 'rgba(var(--ov), 0.06)', border: '1px solid var(--glass-border)', borderRadius: '8px', color: 'var(--text-primary)', padding: '8px', fontSize: '12px' }}
               >
                 <option value="futbol">Fútbol</option>
                 <option value="baloncesto">Baloncesto</option>
@@ -229,14 +229,14 @@ export default function MisApuestas() {
               <input
                 value={manual.desc} onChange={(e) => setManual({ ...manual, desc: e.target.value })}
                 placeholder="Qué apostaste (ej. Lakers -3.5 vs Celtics)" maxLength={140}
-                style={{ flex: 1, minWidth: '200px', background: 'rgba(255,255,255,0.06)', border: '1px solid var(--glass-border)', borderRadius: '8px', color: 'var(--text-primary)', padding: '8px 10px', fontSize: '12px' }}
+                style={{ flex: 1, minWidth: '200px', background: 'rgba(var(--ov), 0.06)', border: '1px solid var(--glass-border)', borderRadius: '8px', color: 'var(--text-primary)', padding: '8px 10px', fontSize: '12px' }}
               />
             </div>
             <div style={{ display: 'flex', gap: '8px', flexWrap: 'wrap' }}>
               {[['stake', 'Monto S/'], ['odds', 'Cuota que conseguiste'], ['closing', 'Cuota de cierre (opcional)']].map(([k, ph]) => (
                 <input
                   key={k} inputMode="decimal" value={manual[k]} onChange={(e) => setManual({ ...manual, [k]: e.target.value })} placeholder={ph}
-                  style={{ flex: 1, minWidth: '120px', background: 'rgba(255,255,255,0.06)', border: '1px solid var(--glass-border)', borderRadius: '8px', color: 'var(--text-primary)', padding: '8px 10px', fontSize: '12px' }}
+                  style={{ flex: 1, minWidth: '120px', background: 'rgba(var(--ov), 0.06)', border: '1px solid var(--glass-border)', borderRadius: '8px', color: 'var(--text-primary)', padding: '8px 10px', fontSize: '12px' }}
                 />
               ))}
             </div>
@@ -280,7 +280,7 @@ export default function MisApuestas() {
             const st = STATUS[b.status] || STATUS.PENDING;
             const net = b.status === 'PENDING' ? null : (b.payout || 0) - b.stake;
             return (
-              <div key={b.id} style={{ padding: '14px', borderRadius: '12px', background: 'rgba(255,255,255,0.02)', borderLeft: `4px solid ${st.color}` }}>
+              <div key={b.id} style={{ padding: '14px', borderRadius: '12px', background: 'rgba(var(--ov), 0.02)', borderLeft: `4px solid ${st.color}` }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', gap: '10px', flexWrap: 'wrap' }}>
                   <div style={{ fontSize: '12px', color: 'var(--text-muted)' }}>
                     {b.legs.length > 1 ? `Combinada de ${b.legs.length}` : 'Simple'} · {b.sport || 'futbol'} · {new Date(b.createdAt).toLocaleDateString('es-PE')} · {sol(b.stake)} a @{b.odds}
@@ -310,7 +310,7 @@ export default function MisApuestas() {
                       if (v === cur) return;
                       run(() => betsApi.setClosing(b.id, v === '' ? null : parseFloat(v.replace(',', '.'))));
                     }}
-                    style={{ width: '70px', background: 'rgba(255,255,255,0.06)', border: '1px solid var(--glass-border)', borderRadius: '6px', color: 'var(--text-primary)', padding: '3px 6px', fontSize: '11.5px' }}
+                    style={{ width: '70px', background: 'rgba(var(--ov), 0.06)', border: '1px solid var(--glass-border)', borderRadius: '6px', color: 'var(--text-primary)', padding: '3px 6px', fontSize: '11.5px' }}
                   />
                   {b.closingOdds ? (
                     <span style={{ color: tone(b.odds / b.closingOdds - 1), fontWeight: 700 }}>
