@@ -894,7 +894,8 @@ export function calculateMatchPrediction(
    * era simplemente el unico que lo dejaba a la vista, porque apostar a
    * "gana por 3+" castiga el error mucho mas que un Over/Under.
    */
-  const XG_REGRESSION = 0.31;
+  // Se puede sobreescribir con la variable XG_REGRESSION solo para experimentos de ajuste.
+  const XG_REGRESSION = Number(process.env.XG_REGRESSION) > 0 ? Number(process.env.XG_REGRESSION) : 0.31;
   const leagueMeanGoals = leagueProfile.goalsPerTeam;
   const shrinkToMean = (xg) => leagueMeanGoals + XG_REGRESSION * (xg - leagueMeanGoals);
 

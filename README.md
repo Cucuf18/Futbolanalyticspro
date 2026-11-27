@@ -314,3 +314,15 @@ En el predictor, cada partido muestra al lado de las probabilidades del modelo l
 ## 🎨 Diseño
 
 Barra lateral de navegación (ligas agrupadas bajo Fútbol, Baloncesto, Mi banca), tema **claro** por defecto y **oscuro** opcional (se guarda en el navegador). Los colores significan algo: azul = modelo, ámbar = mercado, verde = favorable, rojo = aviso. El toggle "Vista completa" reemplaza al antiguo Gratuito/Premium y los espacios publicitarios vacíos se quitaron.
+
+
+## 🏆 Copas de Europa (Europa League y Conference League)
+
+football-data.org las deja fuera de su plan gratuito (12 competiciones), así que se leen de la API pública de ESPN (sin clave, **no oficial**; cada parte falla por separado y la página lo dice). Muestran la tabla de la fase de liga con sus zonas (1–8 directos, 9–24 eliminatoria previa, 25+ fuera), próximos partidos, resultados recientes y la probabilidad implícita en las cuotas cuando ESPN las publica.
+
+**No tienen predicción propia**: con 6–8 partidos por equipo no hay base, y en las ligas locales el modelo ya perdió frente al mercado. Tampoco aparecen en el Predictor, que depende de football-data.org.
+
+
+## 🔬 Laboratorio de mejoras
+
+`ml/lab.py` y `ml/lab2.py` prueban ideas de modelado partido a partido contra el mercado (resultados en [`docs/LABORATORIO_MODELO.md`](docs/LABORATORIO_MODELO.md)). Cualquier cambio al motor debe pasar esta prueba antes de usarse. Última medición: un modelo de goles con vida media larga y tiros reduce a la mitad la distancia con el mercado, pero sigue siendo peor y no da ventaja apostando.
