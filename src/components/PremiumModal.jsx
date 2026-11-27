@@ -14,6 +14,7 @@ export default function PremiumModal({ isOpen, onClose, onActivatePremium }) {
       justifyContent: 'center',
       zIndex: 1000,
       padding: '20px',
+      overflowY: 'auto',
     }}>
       <div className="glass-card animate-fade-in" style={{
         maxWidth: '480px',

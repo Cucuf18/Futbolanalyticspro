@@ -1,4 +1,5 @@
 import { getWeights, getMarketReliability } from './weightOptimizer.js';
+import { goalsModelV2 } from './goalsModelV2.js';
 import { getLeagueProfile, getSignatureBonus, getSignatureNote } from './leagueProfiles.js';
 import { getRating, eloToXgMultiplier } from './ratingPool.js';
 import {
@@ -804,8 +805,25 @@ export function calculateMatchPrediction(
   let base_xG_Home = homeAttack * awayDefense * leagueAvgGoals * homeAdvantage;
   let base_xG_Away = awayAttack * homeDefense * leagueAvgGoals;
 
+  // ── MODELO DE GOLES v2 ──
+  // Medido en docs/LABORATORIO_MODELO.md: reduce ~40% la distancia con el
+  // mercado frente al esquema anterior (Elo + racha + fatiga + H2H +
+  // encogimiento manual). Si no hay historial suficiente, o si se pone
+  // GOALS_MODEL=v1, se usa el camino anterior sin cambios.
+  const v2 = process.env.GOALS_MODEL === 'v1'
+    ? null
+    : goalsModelV2({
+        homeHistory, awayHistory, leagueId: leagueProfile.id, goalsPerTeam: leagueProfile.goalsPerTeam,
+        now: options.now ?? Date.now(),
+      });
+  const useV2 = Boolean(v2);
+  if (useV2) {
+    base_xG_Home = v2.lh;
+    base_xG_Away = v2.la;
+  }
+
   // ── 2. H2H PONDERADO ──
-  if (h2hHistory && h2hHistory.length > 0) {
+  if (!useV2 && h2hHistory && h2hHistory.length > 0) {
     let h2hGoalsHome = 0;
     let h2hGoalsAway = 0;
     let totalWeight = 0;
@@ -847,7 +865,9 @@ export function calculateMatchPrediction(
   const awayRating = options.awayRating || getRating(awayStats.id);
   const eloUsable = homeRating.known && awayRating.known && Math.min(homeRating.matches, awayRating.matches) >= 4;
 
-  if (eloUsable) {
+  if (useV2) {
+    // v2 ya incorpora la fuerza real de cada equipo: no se aplican Elo ni posicion.
+  } else if (eloUsable) {
     const conf = Math.min(homeRating.confidence, awayRating.confidence);
     base_xG_Home *= eloToXgMultiplier(homeRating.elo, awayRating.elo, conf);
     base_xG_Away *= eloToXgMultiplier(awayRating.elo, homeRating.elo, conf);
@@ -861,7 +881,7 @@ export function calculateMatchPrediction(
   // ── 3b. RIVALES EN COMUN ──
   // Si ambos jugaron contra los mismos equipos, ese diferencial de goles
   // es una comparacion directa aunque no se hayan visto nunca las caras.
-  if (commonOpponents && commonOpponents.count >= 2) {
+  if (!useV2 && commonOpponents && commonOpponents.count >= 2) {
     // edge = cuantos goles de diferencia saco el local de ventaja sobre
     // el visitante frente a los rivales compartidos.
     const edge = clamp(commonOpponents.edge, -3, 3) * commonOpponents.confidence;
@@ -899,8 +919,10 @@ export function calculateMatchPrediction(
   const leagueMeanGoals = leagueProfile.goalsPerTeam;
   const shrinkToMean = (xg) => leagueMeanGoals + XG_REGRESSION * (xg - leagueMeanGoals);
 
-  base_xG_Home = shrinkToMean(base_xG_Home);
-  base_xG_Away = shrinkToMean(base_xG_Away);
+  if (!useV2) {
+    base_xG_Home = shrinkToMean(base_xG_Home);
+    base_xG_Away = shrinkToMean(base_xG_Away);
+  }
 
   let xG_Home = Math.max(0.35, base_xG_Home);
   let xG_Away = Math.max(0.25, base_xG_Away);
@@ -1008,6 +1030,7 @@ export function calculateMatchPrediction(
 
   return {
     league: { id: leagueProfile.id, name: leagueProfile.name },
+    model: { goals: useV2 ? 'v2' : 'v1', ...(useV2 ? { homeSample: v2.homeSample, awaySample: v2.awaySample } : {}) },
     probabilities: { homeWin: pctHomeWin, draw: pctDraw, awayWin: pctAwayWin },
     expectedGoals: {
       home: Number(xG_Home.toFixed(2)),

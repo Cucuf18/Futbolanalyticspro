@@ -11,7 +11,7 @@ function Row({ label, model, market }) {
     </div>
   );
   return (
-    <div style={{ display: 'grid', gridTemplateColumns: '88px 1fr 1fr 64px', gap: '12px', alignItems: 'center', padding: '8px 0', borderTop: '1px solid var(--glass-border)' }}>
+    <div className="mc-row" style={{ alignItems: 'center', padding: '8px 0', borderTop: '1px solid var(--glass-border)' }}>
       <span style={{ fontSize: '13px', fontWeight: 600 }}>{label}</span>
       <div style={{ display: 'grid', gap: '3px' }}>
         {bar(model, 'var(--accent-blue)')}
@@ -79,7 +79,7 @@ export default function MarketCompare({ matchInfo, probabilities, probabilitiesS
       <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '6px' }}>
         {m.kickoff.date} {m.kickoff.time} ({m.kickoff.zone}){m.referee ? ` · Árbitro: ${m.referee}` : ''} · Referencia: {m.reference}
       </div>
-      <div style={{ display: 'grid', gridTemplateColumns: '88px 1fr 1fr 64px', gap: '12px', fontSize: '10.5px', letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-muted)', padding: '4px 0' }}>
+      <div className="mc-row" style={{ fontSize: '10.5px', letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--text-muted)', padding: '4px 0' }}>
         <span /><span style={{ color: 'var(--accent-blue)' }}>Modelo</span><span style={{ color: 'var(--accent-gold)' }}>Mercado</span><span />
       </div>
       {mp && (

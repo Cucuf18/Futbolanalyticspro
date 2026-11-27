@@ -12,6 +12,7 @@ const I = {
   target: <Icon><circle cx="12" cy="12" r="9" /><circle cx="12" cy="12" r="4.5" /><circle cx="12" cy="12" r="0.8" fill="currentColor" /></Icon>,
   ticket: <Icon><path d="M4 8a2 2 0 0 0 0 4v0a2 2 0 0 0 0 4v2h16v-2a2 2 0 0 1 0-4v0a2 2 0 0 1 0-4V6H4z" /><path d="M14 6v12" strokeDasharray="2 3" /></Icon>,
   ball: <Icon><circle cx="12" cy="12" r="9" /><path d="M3 12h18M12 3c3 3 3 15 0 18M12 3c-3 3-3 15 0 18" /></Icon>,
+  cup: <Icon><path d="M8 4h8v5a4 4 0 0 1-8 0V4z" /><path d="M8 6H5v1a3 3 0 0 0 3 3M16 6h3v1a3 3 0 0 1-3 3M12 13v4M9 20h6" /></Icon>,
   chart: <Icon><path d="M4 20V8M10 20V4M16 20v-9M22 20H2" /></Icon>,
   chevron: <svg className="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="M9 6l6 6-6 6" /></svg>,
 };
@@ -51,6 +52,9 @@ export default function Sidebar({ leagues, currentLeague, onSelectLeague, isFull
       )}
       <button className={`side-link${onPredict ? ' active' : ''}`} onClick={() => navigate(`/predict/${currentLeague}`)} title="Elige un partido de la liga seleccionada">
         {I.target}<span>Predictor</span>
+      </button>
+      <button className={`side-link${pathname.startsWith('/copas') ? ' active' : ''}`} onClick={() => navigate('/copas')} title="Europa League y Conference League">
+        {I.cup}<span>Copas de Europa</span>
       </button>
       <button className={`side-link${pathname.startsWith('/combinadas') ? ' active' : ''}`} onClick={() => navigate('/combinadas')}>
         {I.ticket}<span>Boleto</span>

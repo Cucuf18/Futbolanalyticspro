@@ -19,8 +19,8 @@ import { ingestMatches, getRating } from './ratingPool.js';
  */
 
 const HISTORY_TTL = 12 * 60 * 60 * 1000; // 12 horas
-const LOOKBACK_DAYS = 420;
-const MAX_MATCHES = 60;
+const LOOKBACK_DAYS = 760; // ~2 temporadas: el modelo de goles v2 usa vida media de 240 dias
+const MAX_MATCHES = 100;
 
 // Vida media del decaimiento: un partido de hace 5 meses pesa la mitad
 // que uno de esta semana.

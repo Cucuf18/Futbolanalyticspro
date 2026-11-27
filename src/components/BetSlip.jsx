@@ -100,6 +100,7 @@ export default function BetSlip() {
   if (isMinimized) {
     return (
       <button
+        className="betslip-pill"
         onClick={() => setIsMinimized(false)}
         title="Abrir mi combinada"
         style={{
@@ -146,11 +147,13 @@ export default function BetSlip() {
 
   // ── Vista completa ──
   return (
-    <div style={{
+    <div className="betslip-panel" style={{
       position: 'fixed',
       bottom: '20px',
       right: '20px',
       width: 'min(320px, calc(100vw - 40px))',
+      maxHeight: 'calc(100vh - 40px)',
+      overflowY: 'auto',
       background: 'rgba(var(--panel), 0.95)',
       backdropFilter: 'blur(10px)',
       WebkitBackdropFilter: 'blur(10px)',

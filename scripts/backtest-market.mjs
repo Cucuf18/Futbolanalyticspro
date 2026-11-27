@@ -22,6 +22,7 @@ import fs from 'fs';
 import path from 'path';
 import { calculateMatchPrediction } from '../server/services/predictorEngine.js';
 import { getLeagueProfile } from '../server/services/leagueProfiles.js';
+import { gradePick } from '../server/services/backtest.js';
 
 const args = process.argv.slice(2);
 const dumpIdx = args.indexOf('--dump');
@@ -194,7 +195,7 @@ for (const [code, leagueId] of Object.entries(LEAGUES)) {
         const eloOf = (id) => ({ elo: Math.round(state.elo.get(id)), matches: state.teams.get(id).matches.length, confidence: Math.min(1, state.teams.get(id).matches.length / 20), known: true });
         try {
           const pred = calculateMatchPrediction(snap(hPrev), snap(aPrev), [], null, null, {
-            leagueId, isLiveData: true, skipMonteCarlo: true,
+            leagueId, isLiveData: true, skipMonteCarlo: true, now: new Date(m.date).getTime(),
             homeHistory: historyOf(state, m.homeId, profile.goalsPerTeam),
             awayHistory: historyOf(state, m.awayId, profile.goalsPerTeam),
             homeRating: eloOf(m.homeId), awayRating: eloOf(m.awayId),
@@ -202,7 +203,16 @@ for (const [code, leagueId] of Object.entries(LEAGUES)) {
           const r = m.row;
           const pr = pred.probabilities;
           const sec = pred.probabilitiesSecondary;
+          const picks = [];
+          for (const tier of ['safe', 'medium', 'risky']) {
+            for (const pk of pred.matchPicks?.[tier] || []) {
+              const hit = gradePick(pk.settle, m.hg, m.ag);
+              if (hit === null || hit === undefined) continue;
+              picks.push({ p: pk.probability, type: pk.marketType, tier, hit: hit ? 1 : 0 });
+            }
+          }
           records.push({
+            picks, goalsModel: pred.model?.goals || 'v1',
             leagueId, season: s, date: m.date, hg: m.hg, ag: m.ag,
             model: { h: pr.homeWin / 100, d: pr.draw / 100, a: pr.awayWin / 100, over: sec.over25 / 100, under: sec.under25 / 100 },
             // Probabilidades justas (sin margen) del cierre de Pinnacle y del promedio

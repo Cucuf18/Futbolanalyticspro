@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import BasketballView from './components/BasketballView';
+import EuroCupsView from './components/EuroCupsView';
 import { BrowserRouter, Routes, Route, useParams, useNavigate, useLocation } from 'react-router-dom';
 import Sidebar from './components/Sidebar';
 import MetricsTable from './components/MetricsTable';
@@ -270,6 +271,7 @@ function AppLayout() {
             <Route path="/tracker" element={<HistoryTracker />} />
             <Route path="/combinadas" element={<CombinadasView />} />
             <Route path="/baloncesto" element={<BasketballView />} />
+            <Route path="/copas" element={<EuroCupsView />} />
           </Routes>
 
           <footer className="main-foot">

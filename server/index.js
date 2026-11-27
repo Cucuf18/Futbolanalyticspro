@@ -13,6 +13,7 @@ import { initPersistence, usingDatabase } from './services/persistence.js';
 import { runAutoRegister } from './services/autoRegister.js';
 import { betsRouter, diagRouter } from './betsRoutes.js';
 import { getMarketFor } from './services/marketOdds.js';
+import { getCompetition } from './services/euroCups.js';
 import { settleBets } from './services/bets.js';
 import { getUpcoming, recordGames, getBasketballReport, autoRun as basketballAutoRun } from './services/basketball.js';
 
@@ -172,6 +173,17 @@ app.get('/api/market', async (req, res) => {
     res.json({ success: true, ...(await getMarketFor(String(league), String(home), String(away))) });
   } catch (err) {
     res.status(502).json({ success: false, error: `No se pudieron leer las cuotas (${err.message}).` });
+  }
+});
+
+// Europa League y Conference League (ESPN, sin clave; no estan en el plan gratuito de football-data.org).
+app.get('/api/euro/:comp', async (req, res) => {
+  try {
+    const data = await getCompetition(String(req.params.comp).toLowerCase());
+    if (!data) return res.status(404).json({ success: false, error: 'Competicion no disponible.' });
+    res.json({ success: true, source: 'espn', fetchedAt: new Date().toISOString(), ...data });
+  } catch (err) {
+    res.status(502).json({ success: false, error: `No se pudo leer ESPN ahora mismo (${err.message}).` });
   }
 });
 

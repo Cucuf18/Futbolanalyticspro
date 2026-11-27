@@ -118,6 +118,8 @@ export function recordPrediction({ leagueId, homeTeam, awayTeam, prediction, kic
     // 'auto' = lo registro el servidor sin intervencion; 'manual' = alguien
     // abrio el partido en la web.
     source,
+    // Con que version del modelo de goles se hizo (v1 = el anterior, v2 = el nuevo).
+    model: prediction.model?.goals || 'v1',
     dataQuality: prediction.dataQuality ?? null,
     expectedGoals: prediction.expectedGoals ?? null,
     probabilities: prediction.probabilities ?? null,
@@ -304,7 +306,7 @@ export function buildReport(predictions) {
   for (const rec of resolved) {
     for (const p of rec.picks) {
       if (p.hit === null || p.hit === undefined) continue;
-      rows.push({ ...p, leagueId: rec.leagueId, dataQuality: rec.dataQuality, source: rec.source || 'manual' });
+      rows.push({ ...p, leagueId: rec.leagueId, dataQuality: rec.dataQuality, source: rec.source || 'manual', model: rec.model || 'v1' });
     }
   }
 
@@ -386,6 +388,8 @@ export function buildReport(predictions) {
     porMercado: groupBy(rows, (r) => r.marketType),
     porNivelDeRiesgo: groupBy(rows, (r) => r.tier),
     porLiga: groupBy(rows, (r) => r.leagueId),
+    // Comparacion directa del modelo anterior (v1) y el nuevo (v2) con partidos reales.
+    porModelo: groupBy(rows, (r) => (r.model === 'v2' ? 'modelo nuevo (v2)' : 'modelo anterior (v1)')),
     // Los registros automaticos cubren TODOS los partidos de las ligas, sin
     // sesgo de seleccion; los manuales son solo los que alguien abrio.
     porOrigen: groupBy(rows, (r) => (r.source === 'auto' ? 'automatico' : 'manual')),

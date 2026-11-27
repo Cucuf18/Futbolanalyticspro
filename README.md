@@ -326,3 +326,12 @@ football-data.org las deja fuera de su plan gratuito (12 competiciones), así qu
 ## 🔬 Laboratorio de mejoras
 
 `ml/lab.py` y `ml/lab2.py` prueban ideas de modelado partido a partido contra el mercado (resultados en [`docs/LABORATORIO_MODELO.md`](docs/LABORATORIO_MODELO.md)). Cualquier cambio al motor debe pasar esta prueba antes de usarse. Última medición: un modelo de goles con vida media larga y tiros reduce a la mitad la distancia con el mercado, pero sigue siendo peor y no da ventaja apostando.
+
+
+## 🧠 Modelo de goles v2 (activo por defecto)
+
+Reduce ~40% la distancia con el mercado en 1X2 (medido en 3 temporadas) usando solo goles: ataque y defensa con vida media de 240 días y un prior pequeño. Detalles y números en `docs/LABORATORIO_MODELO.md`. Para volver al modelo anterior: variable de entorno `GOALS_MODEL=v1`. El informe de Rendimiento compara v1 y v2 con partidos reales.
+
+## 📱 Celular
+
+Panel de la combinada como hoja inferior con desplazamiento, campos de texto sin zoom automático en iPhone, filas compactas en "Mercado vs modelo", tarjetas con menos relleno, respeto de la muesca y la barra inferior.

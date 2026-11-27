@@ -201,6 +201,12 @@ export default function BacktestReport() {
           <Table title="Por nivel de riesgo" rows={report.porNivelDeRiesgo} keyLabel="Nivel" />
           <Table title="Por liga" rows={report.porLiga} keyLabel="Liga" />
           <Table
+            title="Por versión del modelo"
+            note="Compara el modelo anterior (v1) y el nuevo (v2) con partidos reales registrados antes de jugarse."
+            rows={report.porModelo || []}
+            keyLabel="Modelo"
+          />
+          <Table
             title="Por origen del registro"
             note="Automatico = el servidor registro el partido antes de jugarse, para todos por igual (muestra sin sesgo). Manual = alguien abrio ese partido en la web."
             rows={report.porOrigen}

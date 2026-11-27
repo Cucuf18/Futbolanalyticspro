@@ -38,3 +38,26 @@ La Eredivisie sale ligeramente mejor que el mercado con ~300 partidos: con 8 lig
 
 ## Límites
 Un solo año de ajuste y uno de prueba; ocho ligas; xG estimado a partir de tiros (el xG real no está en estos archivos); la fuente en vivo (football-data.org) no trae tiros, así que la parte de tiros no se puede usar tal cual en la web.
+
+---
+
+## Aplicado en producción: modelo de goles v2 (27/11/2026)
+
+Se llevó la versión **solo con goles** al motor (`server/services/goalsModelV2.js`). Sustituye al esquema anterior de goles esperados (Elo + racha + fatiga + H2H + encogimiento manual de 0.31). Si no hay historial suficiente (menos de 8 partidos de alguno de los equipos) el motor usa su camino anterior.
+**Para volver al modelo anterior sin tocar código:** variable de entorno `GOALS_MODEL=v1` en Render.
+
+Medido con el motor real y los mismos 7.345 partidos (`scripts/backtest-market.mjs`), diferencia de error con el mercado en 1X2:
+
+| Temporada | Motor anterior | Motor v2 |
+|---|---|---|
+| 2023/24 | +0.0473 | +0.0328 |
+| 2024/25 | +0.0280 | +0.0194 |
+| 2025/26 | +0.0297 | **+0.0169** (IC95 +0.0104 / +0.0229) |
+
+- Mejora en las 3 temporadas. **Sigue siendo peor que el mercado.**
+- **Más/menos 2.5 empeora un poco:** +0.0143 → +0.0164. Ese mercado prefería el encogimiento fuerte que se quitó.
+- Calibración de los picks verificables (desvío entre lo que dice y lo que acierta): total +0.4 → +0.1; goles +1.1 → +0.2; handicap −2.2 → −0.8; resultado −8.2 → −4.3. No hay señal de que reaparezca la sobreconfianza en el handicap.
+- El motor registra con qué modelo se hizo cada predicción (`model: v1 | v2`) y el informe de rendimiento las separa, para comparar con partidos reales.
+- El historial por equipo en vivo ahora mira ~2 temporadas (760 días, hasta 100 partidos) en lugar de 420 días y 60 partidos.
+
+**No cambia:** el modelo sigue sin dar ventaja apostando (ver BACKTEST_MERCADO.md).
