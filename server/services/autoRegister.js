@@ -1,5 +1,5 @@
 import { config } from '../config.js';
-import { fetchFromApi } from './footballDataClient.js';
+import { fetchFromApi, userRecentlyActive } from './footballDataClient.js';
 import { getMatchPredictionDetails } from './sportsApi.js';
 import { readBlob } from './persistence.js';
 import { ENGINE_VERSION } from './backtest.js';
@@ -26,6 +26,14 @@ const MIN_LEAD_MS = 30 * 60 * 1000; // al menos 30 min antes del inicio
 const MAX_PER_RUN = 20;
 
 let running = false;
+
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+/** Cede el paso mientras alguien usa la pagina (con tope, para no quedarse esperando para siempre). */
+async function yieldToUsers(maxMs = 8 * 60 * 1000) {
+  const start = Date.now();
+  while (userRecentlyActive() && Date.now() - start < maxMs) await sleep(5000);
+}
 
 export async function fixturesToRegister(now = Date.now()) {
   const dateFrom = new Date(now).toISOString().slice(0, 10);
@@ -64,6 +72,7 @@ export async function runAutoRegister() {
     const todo = fixtures.filter((f) => !done.has(`${f.leagueId}:${f.homeId}:${f.awayId}`));
     result.found = fixtures.length;
     for (const f of todo.slice(0, MAX_PER_RUN)) {
+      await yieldToUsers();
       try {
         await getMatchPredictionDetails(f.homeId, f.awayId, f.leagueId, { kickoff: f.kickoff, source: 'auto' });
         result.registered++;

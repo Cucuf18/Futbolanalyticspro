@@ -335,3 +335,8 @@ Reduce ~40% la distancia con el mercado en 1X2 (medido en 3 temporadas) usando s
 ## 📱 Celular
 
 Panel de la combinada como hoja inferior con desplazamiento, campos de texto sin zoom automático en iPhone, filas compactas en "Mercado vs modelo", tarjetas con menos relleno, respeto de la muesca y la barra inferior.
+
+
+## 🛠️ Corrección: "sin historial de partidos"
+
+Cuando la API gratuita fallaba un instante (límite de 10 consultas por minuto), el servidor guardaba ese fallo como "este equipo no tiene historial" durante 12 horas, y el modelo trataba al equipo como "promedio". Ahora: un fallo se recuerda solo 1 minuto, un 429 se reintenta una vez tras esperar lo que indica la API, y el registro automático cede el cupo mientras alguien usa la página.

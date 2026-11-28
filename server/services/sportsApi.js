@@ -604,7 +604,7 @@ export async function getMatchPredictionDetails(homeTeamId, awayTeamId, leagueId
       return;
     }
     if (!h || !h.known) {
-      warnings.push(`${t.name}: sin historial de partidos disponible en la API. El modelo solo puede asumir un equipo promedio.`);
+      warnings.push(`${t.name}: no se pudo obtener su historial de partidos ahora mismo (la API gratuita permite 10 consultas por minuto, o aun no lo tiene). El modelo solo puede asumir un equipo promedio. Recarga la pagina en un minuto para reintentar.`);
     }
   });
 

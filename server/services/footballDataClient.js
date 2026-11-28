@@ -31,42 +31,67 @@ let rateLimitResetMs = 0;
 // del mismo equipo, se comparte la promesa en vez de gastar dos llamadas.
 const inFlight = new Map();
 
+// Cuando alguien usa la pagina, las tareas automaticas en segundo plano
+// esperan para no gastar el cupo de 10 peticiones por minuto.
+let lastUserActivity = 0;
+export function markUserActivity() {
+  lastUserActivity = Date.now();
+}
+export function userRecentlyActive(windowMs = 90 * 1000) {
+  return Date.now() - lastUserActivity < windowMs;
+}
+
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
 export async function fetchFromApi(endpoint) {
   if (!config.footballApiKey) return null;
 
   if (inFlight.has(endpoint)) return inFlight.get(endpoint);
 
   const run = (async () => {
-    if (rateLimitRemaining <= 1 && rateLimitResetMs > Date.now()) {
-      const waitSec = Math.ceil((rateLimitResetMs - Date.now()) / 1000);
-      console.log(`[API] Limite alcanzado. Esperando ${waitSec}s...`);
-      await new Promise((r) => setTimeout(r, (waitSec + 1) * 1000));
-    }
-
-    try {
-      const res = await fetch(`${config.footballApiBaseUrl}${endpoint}`, {
-        headers: { 'X-Auth-Token': config.footballApiKey },
-      });
-
-      const remaining = res.headers.get('x-requests-available-minute');
-      const resetSeconds = res.headers.get('x-requestcounter-reset');
-      if (remaining !== null) rateLimitRemaining = parseInt(remaining, 10);
-      if (resetSeconds !== null) rateLimitResetMs = Date.now() + parseInt(resetSeconds, 10) * 1000;
-
-      if (res.status === 429) {
-        console.warn(`[API] 429 en ${endpoint}. Reintentar en ${resetSeconds || 60}s.`);
-        return null;
-      }
-      if (!res.ok) {
-        console.warn(`[API] ${res.status} en ${endpoint}`);
-        return null;
+    // Dos intentos: si el primero choca con el limite por minuto (429),
+    // se espera lo que indica la API y se reintenta una vez. Antes se
+    // rendia al instante y la pagina se quedaba sin datos.
+    for (let attempt = 0; attempt < 2; attempt++) {
+      if (rateLimitRemaining <= 1 && rateLimitResetMs > Date.now()) {
+        const waitSec = Math.ceil((rateLimitResetMs - Date.now()) / 1000);
+        console.log(`[API] Limite alcanzado. Esperando ${waitSec}s...`);
+        await sleep((waitSec + 1) * 1000);
       }
 
-      return await res.json();
-    } catch (err) {
-      console.warn(`[API] Error de red: ${err.message}`);
-      return null;
+      try {
+        const res = await fetch(`${config.footballApiBaseUrl}${endpoint}`, {
+          headers: { 'X-Auth-Token': config.footballApiKey },
+        });
+
+        const remaining = res.headers.get('x-requests-available-minute');
+        const resetSeconds = res.headers.get('x-requestcounter-reset');
+        if (remaining !== null) rateLimitRemaining = parseInt(remaining, 10);
+        if (resetSeconds !== null) rateLimitResetMs = Date.now() + parseInt(resetSeconds, 10) * 1000;
+
+        if (res.status === 429) {
+          const wait = Math.min(65, (parseInt(resetSeconds, 10) || 60) + 1);
+          if (attempt === 0) {
+            console.warn(`[API] 429 en ${endpoint}. Reintentando en ${wait}s.`);
+            rateLimitRemaining = 0;
+            await sleep(wait * 1000);
+            continue;
+          }
+          console.warn(`[API] 429 en ${endpoint} tras reintentar.`);
+          return null;
+        }
+        if (!res.ok) {
+          console.warn(`[API] ${res.status} en ${endpoint}`);
+          return null;
+        }
+
+        return await res.json();
+      } catch (err) {
+        console.warn(`[API] Error de red: ${err.message}`);
+        return null;
+      }
     }
+    return null;
   })();
 
   inFlight.set(endpoint, run);

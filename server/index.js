@@ -13,6 +13,7 @@ import { initPersistence, usingDatabase } from './services/persistence.js';
 import { runAutoRegister } from './services/autoRegister.js';
 import { betsRouter, diagRouter } from './betsRoutes.js';
 import { getMarketFor } from './services/marketOdds.js';
+import { markUserActivity } from './services/footballDataClient.js';
 import { getCompetition } from './services/euroCups.js';
 import { settleBets } from './services/bets.js';
 import { getUpcoming, recordGames, getBasketballReport, autoRun as basketballAutoRun } from './services/basketball.js';
@@ -43,6 +44,12 @@ app.get('/api/leagues', (req, res) => {
 });
 
 // Get League Standings and Team Stats
+// Las tareas automaticas ceden el cupo de la API mientras alguien usa la pagina.
+app.use(['/api/standings', '/api/h2h', '/api/predict'], (req, res, next) => {
+  markUserActivity();
+  next();
+});
+
 app.get('/api/standings/:leagueId', async (req, res) => {
   try {
     const { leagueId } = req.params;

@@ -19,6 +19,7 @@ import { ingestMatches, getRating } from './ratingPool.js';
  */
 
 const HISTORY_TTL = 12 * 60 * 60 * 1000; // 12 horas
+const FAILED_TTL = 60 * 1000; // 1 minuto si la descarga fallo
 const LOOKBACK_DAYS = 760; // ~2 temporadas: el modelo de goles v2 usa vida media de 240 dias
 const MAX_MATCHES = 100;
 
@@ -88,7 +89,10 @@ export async function getTeamHistory(teamId) {
     .sort((a, b) => new Date(b.date) - new Date(a.date)); // mas reciente primero
 
   const history = buildAggregates(id, matches);
-  setCache(cacheKey, history, HISTORY_TTL);
+  // Solo se recuerda 12 h lo que se descargo bien. Si la peticion fallo
+  // (limite por minuto, red), se guarda 1 minuto: antes un fallo pasajero
+  // dejaba al equipo "sin historial" durante medio dia.
+  setCache(cacheKey, history, data ? HISTORY_TTL : FAILED_TTL);
   return history;
 }
 

@@ -61,3 +61,22 @@ Medido con el motor real y los mismos 7.345 partidos (`scripts/backtest-market.m
 - El historial por equipo en vivo ahora mira ~2 temporadas (760 días, hasta 100 partidos) en lugar de 420 días y 60 partidos.
 
 **No cambia:** el modelo sigue sin dar ventaja apostando (ver BACKTEST_MERCADO.md).
+
+---
+
+## Experimento: aprender de las cuotas pasadas para parecerse al mercado (27/11/2026)
+
+**Idea:** cada equipo recibe un rating que se ajusta para reproducir las probabilidades que el mercado dio en sus partidos anteriores (sin usar resultados). Luego se predice el siguiente partido con esos ratings, sin mirar sus cuotas. Código: `ml/market_ratings.py`.
+**Método:** ritmo de aprendizaje y constante de empate elegidos con 2024/25; prueba final en 2025/26 (n=2.916 partidos, 1X2, mercado de cierre como referencia).
+
+| Modelo | Diferencia de error con el mercado | Distancia media al mercado |
+|---|---|---|
+| Motor anterior (v1) | +0.0297 | 5.00 puntos |
+| Motor v2 (goles) | +0.0169 | 4.05 puntos |
+| **Ratings aprendidos de las cuotas** | **+0.0067** (IC95 +0.0027 / +0.0108) | **2.93 puntos** |
+| Mezcla 85% cuotas / 15% goles | +0.0065 | 2.71 puntos |
+
+- Se acerca mucho más al mercado, pero **sigue siendo peor de forma significativa**.
+- Una vez que se aprende de las cuotas, el modelo basado en resultados casi no aporta (la mezcla mejora apenas 0.0002).
+- Apuestas simuladas (1X2, ventaja > 5%, apertura Bet365): ROI −5.3% (IC95 −16.2% / +5.7%) frente a −7.6% de apostar a todo; CLV −3.0%. No hay evidencia de ventaja: el intervalo es muy ancho y el CLV es negativo.
+- **Requisito:** necesita el historial de cuotas de los partidos ya jugados (los CSV gratuitos de football-data.co.uk, que se actualizan cada semana). No sirve para ligas sin esos archivos.
