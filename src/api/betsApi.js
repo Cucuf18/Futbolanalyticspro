@@ -31,6 +31,13 @@ export async function probeApiFootball() {
   return data;
 }
 
+export async function probeFootballData(team) {
+  const res = await fetch(`/api/diag/football-data${team ? `?team=${team}` : ''}`, { headers: { 'x-bets-token': getToken() } });
+  const data = await res.json().catch(() => ({}));
+  if (!res.ok || data.success === false) throw new Error(data.error || `Error ${res.status}`);
+  return data;
+}
+
 export const betsApi = {
   list: () => call(''),
   add: (bet) => call('', { method: 'POST', body: JSON.stringify(bet) }),

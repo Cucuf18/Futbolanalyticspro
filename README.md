@@ -340,3 +340,5 @@ Panel de la combinada como hoja inferior con desplazamiento, campos de texto sin
 ## 🛠️ Corrección: "sin historial de partidos"
 
 Cuando la API gratuita fallaba un instante (límite de 10 consultas por minuto), el servidor guardaba ese fallo como "este equipo no tiene historial" durante 12 horas, y el modelo trataba al equipo como "promedio". Ahora: un fallo se recuerda solo 1 minuto, un 429 se reintenta una vez tras esperar lo que indica la API, y el registro automático cede el cupo mientras alguien usa la página.
+
+**Actualización (28/11):** el historial de cada equipo ahora se pide una sola vez (el H2H lo reutiliza; antes se pedía dos veces y se agotaba el límite de 10 consultas por minuto), si la API rechaza el rango largo (400) se prueba con 720 y 420 días, y el aviso amarillo indica el **motivo** real del fallo (429, 403, 400, red...). En *Rendimiento* hay un botón **Probar football-data.org** que muestra qué responde la API a cada consulta.

@@ -1,4 +1,4 @@
-import { fetchFromApi, getCached, setCache } from './footballDataClient.js';
+import { fetchFromApi, getCached, setCache, getLastFailure } from './footballDataClient.js';
 import { ingestMatches, getRating } from './ratingPool.js';
 
 /**
@@ -56,11 +56,18 @@ export async function getTeamHistory(teamId) {
   if (cached) return cached;
 
   const dateTo = new Date().toISOString().slice(0, 10);
-  const dateFrom = new Date(Date.now() - LOOKBACK_DAYS * 86400000).toISOString().slice(0, 10);
 
-  const data = await fetchFromApi(
-    `/teams/${teamId}/matches?status=FINISHED&dateFrom=${dateFrom}&dateTo=${dateTo}&limit=${MAX_MATCHES}`
-  );
+  // Si la API rechaza los parametros (400), se prueba con rangos mas
+  // cortos que ya se sabe que acepta, en vez de dejar al equipo sin historial.
+  let endpoint = '';
+  let data = null;
+  for (const [days, limit] of [[LOOKBACK_DAYS, MAX_MATCHES], [720, 100], [420, 60]]) {
+    const from = new Date(Date.now() - days * 86400000).toISOString().slice(0, 10);
+    endpoint = `/teams/${teamId}/matches?status=FINISHED&dateFrom=${from}&dateTo=${dateTo}&limit=${limit}`;
+    data = await fetchFromApi(endpoint);
+    if (data) break;
+    if (getLastFailure(endpoint)?.status !== 400) break; // 429, 403, red...: otro rango no ayuda
+  }
 
   const raw = data?.matches || [];
   // Todo partido visto engorda los ratings, incluido el de los rivales.
@@ -89,6 +96,11 @@ export async function getTeamHistory(teamId) {
     .sort((a, b) => new Date(b.date) - new Date(a.date)); // mas reciente primero
 
   const history = buildAggregates(id, matches);
+  // Partidos tal como los entrega la API: el H2H los reutiliza en vez de
+  // volver a pedirlos (antes cada prediccion gastaba dos consultas por equipo).
+  history.rawMatches = raw;
+  if (!data) history.failure = String(getLastFailure(endpoint)?.status ?? 'sin-respuesta');
+  else if (matches.length === 0) history.failure = 'sin-partidos';
   // Solo se recuerda 12 h lo que se descargo bien. Si la peticion fallo
   // (limite por minuto, red), se guarda 1 minuto: antes un fallo pasajero
   // dejaba al equipo "sin historial" durante medio dia.

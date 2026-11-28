@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useState } from 'react';
-import { betsApi, getToken, setToken, probeApiFootball } from '../api/betsApi';
+import { betsApi, getToken, setToken, probeApiFootball, probeFootballData } from '../api/betsApi';
 
 const sol = (n) => (n === null || n === undefined ? '—' : `S/ ${Number(n).toLocaleString('es-PE', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`);
 const sign = (n) => (n > 0 ? '+' : '');
@@ -39,6 +39,8 @@ export default function MisApuestas() {
   const [manual, setManual] = useState({ sport: 'futbol', desc: '', stake: '', odds: '', closing: '' });
   const [manualMsg, setManualMsg] = useState(null);
   const [probing, setProbing] = useState(false);
+  const [fdProbe, setFdProbe] = useState(null);
+  const [fdBusy, setFdBusy] = useState(false);
 
   const load = useCallback(async () => {
     setLoading(true);
@@ -187,6 +189,29 @@ export default function MisApuestas() {
           )}
         </>
       )}
+
+      <div style={{ marginTop: '18px', paddingTop: '14px', borderTop: '1px solid var(--glass-border)' }}>
+        <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '8px', lineHeight: 1.5 }}>
+          <strong>Diagnóstico de la fuente de datos (football-data.org):</strong> si un partido sale con el aviso amarillo de "sin historial",
+          este botón prueba las mismas consultas y muestra qué responde la API. Tarda unos 8 segundos y no guarda nada.
+        </div>
+        <button
+          disabled={fdBusy}
+          onClick={async () => {
+            setFdBusy(true);
+            setFdProbe(null);
+            try { setFdProbe(await probeFootballData()); } catch (e) { setFdProbe({ error: e.message }); } finally { setFdBusy(false); }
+          }}
+          style={btn('var(--accent-cyan)')}
+        >
+          {fdBusy ? 'Probando...' : 'Probar football-data.org'}
+        </button>
+        {fdProbe && (
+          <pre style={{ marginTop: '10px', padding: '10px', background: 'rgba(0,0,0,0.35)', borderRadius: '8px', fontSize: '11px', maxHeight: '320px', overflow: 'auto', whiteSpace: 'pre-wrap', color: 'var(--text-secondary)' }}>
+            {JSON.stringify(fdProbe, null, 2)}
+          </pre>
+        )}
+      </div>
 
       <div style={{ marginTop: '18px', paddingTop: '14px', borderTop: '1px solid var(--glass-border)' }}>
         <div style={{ fontSize: '12px', color: 'var(--text-secondary)', marginBottom: '8px', lineHeight: 1.5 }}>

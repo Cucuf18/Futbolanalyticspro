@@ -273,24 +273,11 @@ export async function getH2HHistory(homeTeamId, awayTeamId, leagueId = 'PL') {
   // Try fetching REAL matches if API key is present
   if (config.footballApiKey) {
     try {
-      const matchCacheKey = `team_matches_${homeTeam.id}`;
-      let apiData = getCached(matchCacheKey);
-      
-      if (!apiData) {
-        if (inFlightRequests.has(matchCacheKey)) {
-           apiData = await inFlightRequests.get(matchCacheKey);
-        } else {
-           const today = new Date();
-           const dateTo = today.toISOString().split('T')[0];
-           const dateFrom = new Date(today.getTime() - 720 * 86400000).toISOString().split('T')[0];
-           
-           const reqPromise = fetchFromApi(`/teams/${homeTeam.id}/matches?status=FINISHED&dateFrom=${dateFrom}&dateTo=${dateTo}&limit=100`);
-           inFlightRequests.set(matchCacheKey, reqPromise);
-           apiData = await reqPromise;
-           inFlightRequests.delete(matchCacheKey);
-           if (apiData) setCache(matchCacheKey, apiData, 24 * 60 * 60 * 1000); // 24h
-        }
-      }
+      // Se reutiliza el historial ya descargado para el modelo (misma consulta,
+      // compartida y en cache): antes se pedia dos veces por equipo y se
+      // agotaba el limite de 10 consultas por minuto.
+      const hist = await getTeamHistory(homeTeam.id);
+      const apiData = hist?.rawMatches?.length ? { matches: hist.rawMatches } : null;
 
       if (apiData?.matches?.length) {
         // Step 1: Find any match between these two teams to get a valid matchId
@@ -515,6 +502,21 @@ async function enrichWithDomesticForm(team, leagueId) {
 /* ──────────────────────────────────────────────────────
    Public API: Match Prediction
    ────────────────────────────────────────────────────── */
+/** Explica en palabras por que fallo la descarga del historial de un equipo. */
+export function reasonText(code) {
+  switch (String(code)) {
+    case '429': return 'la API gratuita permite solo 10 consultas por minuto y se agoto';
+    case '403': return 'la API respondio 403: recurso restringido en el plan gratuito';
+    case '404': return 'la API respondio 404: no encontro el equipo';
+    case '400': return 'la API respondio 400: no acepto los parametros de la consulta';
+    case 'red': return 'error de red al llamar a la API';
+    case 'sin-partidos': return 'la API respondio, pero sin partidos terminados para ese equipo';
+    case 'undefined':
+    case 'sin-respuesta': return 'sin respuesta de la API';
+    default: return `la API respondio ${code}`;
+  }
+}
+
 export async function getMatchPredictionDetails(homeTeamId, awayTeamId, leagueId = 'PL', opts = {}) {
   const standings = await getLeagueStandings(leagueId);
   const foundHome = standings.teams.find((t) => t.id === Number(homeTeamId));
@@ -604,7 +606,7 @@ export async function getMatchPredictionDetails(homeTeamId, awayTeamId, leagueId
       return;
     }
     if (!h || !h.known) {
-      warnings.push(`${t.name}: no se pudo obtener su historial de partidos ahora mismo (la API gratuita permite 10 consultas por minuto, o aun no lo tiene). El modelo solo puede asumir un equipo promedio. Recarga la pagina en un minuto para reintentar.`);
+      warnings.push(`${t.name}: no se pudo obtener su historial de partidos (motivo: ${reasonText(h?.failure)}). El modelo solo puede usar la tabla de la competicion. Recarga la pagina en un minuto para reintentar.`);
     }
   });
 

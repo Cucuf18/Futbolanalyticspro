@@ -1,6 +1,7 @@
 import express from 'express';
 import crypto from 'crypto';
 import { probeApiFootball } from './services/apiFootballProbe.js';
+import { probeFootballData } from './services/footballDataProbe.js';
 import { listBets, addBet, resolveBet, deleteBet, setClosingOdds, setInitialBankroll, settleBets } from './services/bets.js';
 
 /**
@@ -95,6 +96,15 @@ diagRouter.get('/api-football', async (req, res) => {
   try {
     const season = Number.parseInt(req.query.season, 10) || new Date().getFullYear();
     res.json({ success: true, ...(await probeApiFootball(process.env.APIFOOTBALL_KEY, { season })) });
+  } catch (err) {
+    res.status(500).json({ success: false, error: err.message });
+  }
+});
+
+diagRouter.get('/football-data', async (req, res) => {
+  try {
+    const team = Number.parseInt(req.query.team, 10) || 86; // 86 = Real Madrid
+    res.json({ success: true, ...(await probeFootballData(team)) });
   } catch (err) {
     res.status(500).json({ success: false, error: err.message });
   }

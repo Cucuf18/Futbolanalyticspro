@@ -43,6 +43,14 @@ export function userRecentlyActive(windowMs = 90 * 1000) {
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
+// Ultimo motivo de fallo por consulta, para poder decirle al usuario QUE
+// paso en vez de un aviso generico (429 = limite por minuto, 403 = recurso
+// restringido en el plan gratuito, 400 = parametros no aceptados...).
+const failures = new Map();
+export function getLastFailure(endpoint) {
+  return failures.get(endpoint) || null;
+}
+
 export async function fetchFromApi(endpoint) {
   if (!config.footballApiKey) return null;
 
@@ -78,16 +86,20 @@ export async function fetchFromApi(endpoint) {
             continue;
           }
           console.warn(`[API] 429 en ${endpoint} tras reintentar.`);
+          failures.set(endpoint, { status: 429, at: Date.now() });
           return null;
         }
         if (!res.ok) {
           console.warn(`[API] ${res.status} en ${endpoint}`);
+          failures.set(endpoint, { status: res.status, at: Date.now() });
           return null;
         }
 
+        failures.delete(endpoint);
         return await res.json();
       } catch (err) {
         console.warn(`[API] Error de red: ${err.message}`);
+        failures.set(endpoint, { status: 'red', at: Date.now() });
         return null;
       }
     }
